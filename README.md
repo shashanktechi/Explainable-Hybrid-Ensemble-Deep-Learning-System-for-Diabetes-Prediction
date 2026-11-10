@@ -5,18 +5,26 @@ An explainable, multi-dataset diabetes risk prediction system combining a hybrid
 ---
 
 ## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [API Endpoints](#api-endpoints)
-- [Datasets](#datasets)
-- [Project Timeline](#project-timeline)
-- [Team](#team)
-- [Roadmap](#roadmap)
-- [License](#license)
+- [XAI-HEDL: Explainable Hybrid Ensemble Deep Learning System for Diabetes Prediction](#xai-hedl-explainable-hybrid-ensemble-deep-learning-system-for-diabetes-prediction)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [System Architecture](#system-architecture)
+  - [Project Structure](#project-structure)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [1. Clone the repo](#1-clone-the-repo)
+    - [2. Backend setup](#2-backend-setup)
+    - [3. ML pipeline (train models before first run)](#3-ml-pipeline-train-models-before-first-run)
+    - [4. Database setup](#4-database-setup)
+    - [5. Frontend setup](#5-frontend-setup)
+  - [API Endpoints](#api-endpoints)
+  - [Datasets](#datasets)
+  - [Project Timeline](#project-timeline)
+  - [Team](#team)
+  - [Roadmap](#roadmap)
+  - [License](#license)
 
 ---
 
@@ -170,10 +178,10 @@ Full day-by-day plan with owners: `docs/Diabetes_Prediction_Project_Structure.pd
 
 | Name | Role |
 |---|---|
-| **Kisannagari Shashank** | Backend & ML/XAI Developer (Python, model training, SHAP/LIME integration) |
-| **[Teammate Name]** | Frontend Developer (React.js) |
-| **[Teammate Name]** | Database Developer (SQL schema, ORM, migrations) |
-| **[Teammate Name]** | Deployment & GitHub Lead (CI/CD, hosting, repo management) |
+| **Sanjana** | Backend & ML/XAI Developer (Python, model training, SHAP/LIME integration) |
+| **Shashank** | Frontend Developer (React.js) |
+| **Santhosh** | Database Developer (SQL schema, ORM, migrations) |
+| **Prashanth** | Deployment & GitHub Lead (CI/CD, hosting, repo management) |
 
 *Final-year B.Tech CSE, Madanapalle Institute of Technology & Science*
 
