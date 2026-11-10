@@ -1,0 +1,352 @@
+@import "tailwindcss";
+
+/* ── Design Tokens ── */
+@theme {
+  /* Navy palette (dark mode backgrounds) */
+  --color-navy-950: #0B1F3A;
+  --color-navy-900: #112D4E;
+  --color-navy-800: #1A3A5C;
+  --color-navy-700: #234B6E;
+  --color-navy-600: #2D5F8A;
+
+  /* Accent teal-cyan */
+  --color-accent-300: #5EEAD4;
+  --color-accent-400: #22D3EE;
+  --color-accent-500: #14B8A6;
+  --color-accent-600: #0D9488;
+  --color-accent-700: #0F766E;
+
+  /* Risk bands – amber for high, yellow-green for moderate, teal for low */
+  --color-risk-high: #F59E0B;
+  --color-risk-moderate: #EAB308;
+  --color-risk-low: #14B8A6;
+
+  /* Surface colors */
+  --color-surface-dark: rgba(17, 45, 78, 0.8);
+  --color-surface-dark-solid: #112D4E;
+  --color-surface-light: #FFFFFF;
+  --color-surface-light-alt: #F1F5F9;
+
+  /* Border */
+  --color-border-dark: rgba(20, 184, 166, 0.1);
+  --color-border-dark-hover: rgba(20, 184, 166, 0.25);
+  --color-border-light: #E2E8F0;
+  --color-border-light-hover: #CBD5E1;
+
+  /* Glass */
+  --color-glass-bg: rgba(17, 45, 78, 0.4);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+
+  /* Typography */
+  --font-heading: 'Sora', 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.06);
+  --shadow-card-dark: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-dark-hover: 0 10px 25px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.15);
+  --shadow-glow-strong: 0 0 40px rgba(20, 184, 166, 0.25);
+
+  /* Animations */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Breakpoints */
+  --breakpoint-xs: 475px;
+}
+
+/* ── Base Styles ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  transition: background-color 0.3s var(--ease-smooth), color 0.3s var(--ease-smooth);
+}
+
+.dark body,
+html.dark body {
+  background-color: var(--color-navy-950);
+  color: #F1F5F9;
+}
+
+/* ── Heading Font ── */
+h1, h2, h3, h4, h5, h6,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94A3B8;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* ── Focus Ring ── */
+*:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Gradient Mesh Background (Landing Page) ── */
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(20, 184, 166, 0.04) 0%, transparent 50%);
+}
+
+.dark .gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(20, 184, 166, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(20, 184, 166, 0.06) 0%, transparent 50%),
+    var(--color-navy-950);
+}
+
+/* ── Glass Card (Landing Page Only) ── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: var(--color-glass-bg);
+  border: 1px solid var(--color-glass-border);
+}
+
+/* ── Elevated Card (Dashboard Interior) ── */
+.elevated-card {
+  background: var(--color-surface-light);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-card);
+  border-radius: 12px;
+  transition: box-shadow 0.2s var(--ease-smooth), border-color 0.2s var(--ease-smooth);
+}
+
+.elevated-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-border-light-hover);
+}
+
+.dark .elevated-card {
+  background: var(--color-surface-dark-solid);
+  border-color: var(--color-border-dark);
+  box-shadow: var(--shadow-card-dark);
+}
+
+.dark .elevated-card:hover {
+  box-shadow: var(--shadow-card-dark-hover);
+  border-color: var(--color-border-dark-hover);
+}
+
+/* ── Accent Gradient Text ── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-accent-500), var(--color-accent-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Accent Gradient Button ── */
+.btn-accent {
+  background: linear-gradient(135deg, var(--color-accent-500), var(--color-accent-400));
+  color: white;
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s var(--ease-spring), box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+}
+
+.btn-accent:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(20, 184, 166, 0.4);
+}
+
+.btn-accent:active {
+  transform: translateY(0);
+}
+
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Secondary Button ── */
+.btn-secondary {
+  background: transparent;
+  color: var(--color-accent-500);
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-accent-500);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s var(--ease-spring);
+}
+
+.btn-secondary:hover {
+  background: rgba(20, 184, 166, 0.08);
+  transform: translateY(-1px);
+}
+
+.dark .btn-secondary {
+  color: var(--color-accent-400);
+  border-color: var(--color-accent-400);
+}
+
+.dark .btn-secondary:hover {
+  background: rgba(20, 184, 166, 0.12);
+}
+
+/* ── Form Input ── */
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border-light);
+  background: var(--color-surface-light);
+  color: #0F172A;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--color-accent-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  outline: none;
+}
+
+.form-input::placeholder {
+  color: #94A3B8;
+}
+
+.dark .form-input {
+  background: var(--color-navy-800);
+  border-color: var(--color-border-dark);
+  color: #F1F5F9;
+}
+
+.dark .form-input:focus {
+  border-color: var(--color-accent-500);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+}
+
+.dark .form-input::placeholder {
+  color: #64748B;
+}
+
+.form-input-error {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ── Skeleton Loader ── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, var(--color-navy-800) 25%, var(--color-navy-700) 50%, var(--color-navy-800) 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Risk Band Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-low {
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--color-accent-600);
+}
+
+.dark .badge-low {
+  background: rgba(20, 184, 166, 0.15);
+  color: var(--color-accent-400);
+}
+
+.badge-moderate {
+  background: rgba(234, 179, 8, 0.12);
+  color: #A16207;
+}
+
+.dark .badge-moderate {
+  background: rgba(234, 179, 8, 0.15);
+  color: #FACC15;
+}
+
+.badge-high {
+  background: rgba(245, 158, 11, 0.12);
+  color: #B45309;
+}
+
+.dark .badge-high {
+  background: rgba(245, 158, 11, 0.18);
+  color: #FBBF24;
+}
+
+/* ── Utility: hide-scrollbar ── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Toaster overrides ── */
+.toast-custom {
+  font-family: var(--font-body);
+}
