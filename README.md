@@ -170,10 +170,10 @@ Full day-by-day plan with owners: `docs/Diabetes_Prediction_Project_Structure.pd
 
 | Name | Role |
 |---|---|
-| **Kisannagari Shashank** | Backend & ML/XAI Developer (Python, model training, SHAP/LIME integration) |
-| **[Teammate Name]** | Frontend Developer (React.js) |
-| **[Teammate Name]** | Database Developer (SQL schema, ORM, migrations) |
-| **[Teammate Name]** | Deployment & GitHub Lead (CI/CD, hosting, repo management) |
+| **Sanjana** | Backend & ML/XAI Developer (Python, model training, SHAP/LIME integration) |
+| **Shashank** | Frontend Developer (React.js) |
+| **Santhosh** | Database Developer (SQL schema, ORM, migrations) |
+| **Prashanth** | Deployment & GitHub Lead (CI/CD, hosting, repo management) |
 
 *Final-year B.Tech CSE, Madanapalle Institute of Technology & Science*
 
