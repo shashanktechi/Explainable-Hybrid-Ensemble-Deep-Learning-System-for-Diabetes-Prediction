@@ -1,12 +1,12 @@
 """
 ORM model: patients table (demographics only, no lab values).
+MySQL-compatible: UUID stored as CHAR(32) via SQLAlchemy Uuid(native_uuid=False).
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import String, Integer, Enum, DateTime, ForeignKey, Index, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Integer, Enum, DateTime, ForeignKey, Index, func, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.db_connection import Base
@@ -16,7 +16,8 @@ class Patient(Base):
     __tablename__ = "patients"
 
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+        Uuid(native_uuid=False), primary_key=True,
+        default=uuid.uuid4,
     )
     patient_code: Mapped[str] = mapped_column(
         String(30), unique=True, nullable=False
@@ -24,15 +25,17 @@ class Patient(Base):
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
     gender: Mapped[str] = mapped_column(
-        Enum("M", "F", "Other", name="gender_type", create_constraint=True),
+        Enum("M", "F", "Other", name="gender_type"),
         nullable=False,
     )
     contact_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False
+        Uuid(native_uuid=False), ForeignKey("users.user_id"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
     )
 
     # Relationships

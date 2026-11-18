@@ -1,5 +1,5 @@
 """
-Auth tests — login success/failure, protected route 401, doctor->admin route 403.
+Auth tests — login success/failure, protected route 401, doctor->admin 403.
 """
 
 
@@ -44,8 +44,7 @@ class TestProtectedRoutes:
         assert data["email"] == "admin@test.com"
         assert "password_hash" not in data
 
-    def test_doctor_cannot_access_admin_route(self, client, auth_headers_doctor):
-        """Doctor trying to list users (admin-only) gets 403."""
+    def test_doctor_cannot_access_admin_route(self, client, auth_headers_doctor, doctor_user):
         response = client.get("/api/auth/users", headers=auth_headers_doctor)
         assert response.status_code == 403
 

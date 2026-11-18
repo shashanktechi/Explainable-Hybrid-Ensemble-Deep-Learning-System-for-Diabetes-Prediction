@@ -1,16 +1,17 @@
 -- ============================================================
--- XAI-HEDL Seed Data
--- 1 admin, 1 doctor, 2 sample patients, 1 model_registry row
+-- XAI-HEDL Seed Data  –  MySQL 8.0+
+-- UUIDs are CHAR(32) hex without dashes (Uuid native_uuid=False)
 --
--- Passwords (bcrypt hashes):
+-- Passwords (bcrypt $2b$12$):
 --   admin@xaihedl.com   -> Admin@123
 --   doctor@xaihedl.com  -> Doctor@123
 -- ============================================================
 
 -- Admin user
+-- UUID: a0000000-0000-0000-0000-000000000001 -> hex: a0000000000000000000000000000001
 INSERT INTO users (user_id, full_name, email, password_hash, role, hospital_name)
 VALUES (
-    'a0000000-0000-0000-0000-000000000001',
+    'a0000000000000000000000000000001',
     'System Admin',
     'admin@xaihedl.com',
     '$2b$12$TMAYYJ.5b6N5EXMGlcfRt.FrXTccBnKwj3/4K8tQBnv05Xk2O951q',
@@ -19,9 +20,10 @@ VALUES (
 );
 
 -- Doctor user
+-- UUID: a0000000-0000-0000-0000-000000000002 -> hex: a0000000000000000000000000000002
 INSERT INTO users (user_id, full_name, email, password_hash, role, hospital_name)
 VALUES (
-    'a0000000-0000-0000-0000-000000000002',
+    'a0000000000000000000000000000002',
     'Dr. Sarah Chen',
     'doctor@xaihedl.com',
     '$2b$12$6fUjFqdqff2ITDtGfv53VOa8WvvcCcpoRRF2GxmszqryG/yb8kIvO',
@@ -30,33 +32,36 @@ VALUES (
 );
 
 -- Patient 1
+-- UUID: b0000000-0000-0000-0000-000000000001 -> hex: b0000000000000000000000000000001
 INSERT INTO patients (patient_id, patient_code, full_name, age, gender, contact_number, created_by)
 VALUES (
-    'b0000000-0000-0000-0000-000000000001',
+    'b0000000000000000000000000000001',
     'PAT-000001',
     'John Doe',
     45,
     'M',
     '+1-555-0101',
-    'a0000000-0000-0000-0000-000000000002'
+    'a0000000000000000000000000000002'
 );
 
 -- Patient 2
+-- UUID: b0000000-0000-0000-0000-000000000002 -> hex: b0000000000000000000000000000002
 INSERT INTO patients (patient_id, patient_code, full_name, age, gender, contact_number, created_by)
 VALUES (
-    'b0000000-0000-0000-0000-000000000002',
+    'b0000000000000000000000000000002',
     'PAT-000002',
     'Jane Smith',
     32,
     'F',
     '+1-555-0102',
-    'a0000000-0000-0000-0000-000000000002'
+    'a0000000000000000000000000000002'
 );
 
 -- Model registry: stub entry
+-- UUID: c0000000-0000-0000-0000-000000000001 -> hex: c0000000000000000000000000000001
 INSERT INTO model_registry (model_id, model_name, version, trained_on_dataset, file_path)
 VALUES (
-    'c0000000-0000-0000-0000-000000000001',
+    'c0000000000000000000000000000001',
     'Stack-DNN',
     'stub-v0',
     'PIMA-IDD-I',
