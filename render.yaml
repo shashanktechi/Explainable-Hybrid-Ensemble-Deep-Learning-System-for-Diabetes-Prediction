@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: xai-hedl-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # Set manually in Render dashboard — never commit
+      - key: JWT_SECRET
+        sync: false          # Set manually in Render dashboard — never commit
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: CORS_ORIGINS
+        sync: false          # e.g. https://your-frontend.vercel.app
+      - key: MODEL_VERSION
+        value: stub-v0
+      - key: USE_STUB_MODEL
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO

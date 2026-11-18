@@ -1,12 +1,12 @@
 """
 ORM model: clinical_records table (one row per visit / lab test — model input).
+MySQL-compatible: UUID stored as CHAR(32) via SQLAlchemy Uuid(native_uuid=False).
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import Float, Integer, DateTime, ForeignKey, Index, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Float, Integer, DateTime, ForeignKey, Index, func, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.db_connection import Base
@@ -16,10 +16,11 @@ class ClinicalRecord(Base):
     __tablename__ = "clinical_records"
 
     record_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
+        Uuid(native_uuid=False), primary_key=True,
+        default=uuid.uuid4,
     )
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid(native_uuid=False),
         ForeignKey("patients.patient_id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -32,7 +33,9 @@ class ClinicalRecord(Base):
     hba1c: Mapped[float | None] = mapped_column(Float, nullable=True)
     diabetes_pedigree_fn: Mapped[float | None] = mapped_column(Float, nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
     )
 
     # Relationships

@@ -146,11 +146,8 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Update last_login
+    # Update last_login and write audit log in one transaction
     user.last_login = datetime.now(timezone.utc)
-    db.commit()
-
-    # Audit
     log_audit(db, user.user_id, "login", "users", user.user_id)
     db.commit()
 
