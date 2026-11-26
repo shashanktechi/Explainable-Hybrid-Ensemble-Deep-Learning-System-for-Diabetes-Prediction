@@ -1,9 +1,7 @@
-"""
-Explanation service — SHAP/LIME stubs + rule-based recommendations.
+"""Model explanation dispatch and non-prescriptive recommendation text.
 
-# STUB — replace with real xai/shap_explainer.py, xai/lime_explainer.py
-#        and xai/recommendation_engine.py later without changing routes
-#        or response shape.
+Trained predictors provide genuine model-agnostic SHAP/LIME values. The demo
+stub path returns clearly labeled heuristic values for UI/API development.
 """
 
 
@@ -32,12 +30,12 @@ _FEATURE_NAMES: dict[str, str] = {
 }
 
 
-def compute_shap_values(features: dict) -> dict[str, float]:
+def compute_shap_values(features: dict, model=None) -> dict[str, float]:
     """
-    # STUB — replace with real SHAP in xai/shap_explainer.py
-    Deterministic per-feature contributions derived from how far each input
-    is from a normal reference value. Only includes features that were provided.
+    Heuristic demo contribution used only with the explicit stub predictor.
     """
+    if model is not None and hasattr(model, "explain"):
+        return model.explain(features)[0]
     shap: dict[str, float] = {}
     for key, normal in _NORMAL_REF.items():
         value = features.get(key)
@@ -49,11 +47,12 @@ def compute_shap_values(features: dict) -> dict[str, float]:
     return shap
 
 
-def compute_lime_values(features: dict) -> dict[str, float]:
+def compute_lime_values(features: dict, model=None) -> dict[str, float]:
     """
-    # STUB — replace with real LIME in xai/lime_explainer.py
-    Similar to SHAP but with slightly different scaling (simulating LIME).
+    Heuristic demo contribution used only with the explicit stub predictor.
     """
+    if model is not None and hasattr(model, "explain"):
+        return model.explain(features)[1]
     lime: dict[str, float] = {}
     for key, normal in _NORMAL_REF.items():
         value = features.get(key)
@@ -76,9 +75,7 @@ def generate_recommendations(
     features: dict,
 ) -> list[dict[str, str]]:
     """
-    # STUB — replace with real xai/recommendation_engine.py
-    Rule-based, one per category (diet, lifestyle, follow_up).
-    Text depends on risk_band and top_features.
+    Non-prescriptive discussion prompts, one per category.
     """
     recommendations: list[dict[str, str]] = []
 
@@ -98,58 +95,21 @@ def generate_recommendations(
 
 
 def _diet_recommendation(risk_band: str, top_features: list[str], features: dict) -> str:
-    """Generate diet recommendation based on risk and top features."""
-    if "glucose" in top_features and features.get("glucose", 0) > 140:
-        base = "Reduce refined sugar and simple carbohydrates. Focus on low-glycemic foods."
-    elif "bmi" in top_features and features.get("bmi", 0) > 30:
-        base = "Adopt a calorie-controlled diet rich in vegetables, lean proteins, and whole grains."
-    elif "hba1c" in top_features:
-        base = "Maintain consistent meal timing and reduce processed food intake to stabilize blood sugar."
-    else:
-        base = "Follow a balanced diet with adequate fiber, lean protein, and healthy fats."
-
-    if risk_band == "High":
-        base += " Consider consulting a registered dietitian for a personalized meal plan."
-    elif risk_band == "Moderate":
-        base += " Monitor carbohydrate intake and prefer complex carbohydrates."
-
-    return base
+    """Offer a feature-personalized, non-prescriptive discussion point."""
+    focus = ", ".join(top_features[:2]).replace("_", " ") or "the reported measurements"
+    return (f"For this {risk_band.lower()} application band, review {focus} with a qualified clinician or dietitian "
+            "when discussing whether nutrition changes are appropriate. These model drivers are associations, not causes.")
 
 
 def _lifestyle_recommendation(risk_band: str, top_features: list[str], features: dict) -> str:
-    """Generate lifestyle recommendation."""
-    if risk_band == "High":
-        return (
-            "Engage in at least 150 minutes of moderate aerobic activity per week. "
-            "Monitor blood glucose levels daily and maintain a health journal."
-        )
-    elif risk_band == "Moderate":
-        return (
-            "Aim for 30 minutes of moderate exercise most days of the week. "
-            "Maintain a healthy weight and manage stress through relaxation techniques."
-        )
-    else:
-        return (
-            "Continue regular physical activity and maintain a healthy lifestyle. "
-            "Annual health check-ups are recommended."
-        )
+    """Avoid inferring activity needs from lab inputs the model did not collect."""
+    focus = ", ".join(top_features[:2]).replace("_", " ") or "the reported measurements"
+    return (f"This {risk_band.lower()} band and {focus} do not describe daily activity, medications, or personal barriers. "
+            "Ask the care team which lifestyle goals, if any, are safe and relevant.")
 
 
 def _followup_recommendation(risk_band: str, top_features: list[str]) -> str:
-    """Generate follow-up recommendation."""
-    if risk_band == "High":
-        return (
-            "Consult an endocrinologist within 1-2 weeks. "
-            "Schedule an HbA1c test and comprehensive metabolic panel. "
-            "Consider referral for diabetes education program."
-        )
-    elif risk_band == "Moderate":
-        return (
-            "Schedule a follow-up appointment within 1 month. "
-            "Repeat fasting glucose and HbA1c tests in 3 months."
-        )
-    else:
-        return (
-            "Routine follow-up in 6-12 months. "
-            "Continue annual diabetes screening as recommended."
-        )
+    """Leave test selection and follow-up timing to the treating clinician."""
+    focus = ", ".join(top_features[:2]).replace("_", " ") or "these results"
+    band = risk_band.lower()
+    return f"Ask a qualified clinician to interpret this {band} application band and {focus} with the patient's history and decide whether further evaluation or follow-up is appropriate."

@@ -12,10 +12,27 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role         ENUM('doctor','admin') NOT NULL,
     hospital_name VARCHAR(150),
+    email_verified BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INT NOT NULL DEFAULT 0,
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login   DATETIME,
     PRIMARY KEY  (user_id),
     UNIQUE KEY   uq_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- OTP codes are stored only as keyed hashes, expire quickly, and are single use.
+CREATE TABLE IF NOT EXISTS email_otp_challenges (
+    challenge_id CHAR(32) NOT NULL,
+    user_id CHAR(32) NOT NULL,
+    purpose VARCHAR(32) NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    expires_at DATETIME NOT NULL,
+    consumed_at DATETIME NULL,
+    PRIMARY KEY (challenge_id),
+    KEY ix_email_otp_user_purpose_created (user_id, purpose, created_at),
+    CONSTRAINT fk_email_otp_user FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- patients
@@ -39,6 +56,8 @@ CREATE TABLE IF NOT EXISTS patients (
 CREATE TABLE IF NOT EXISTS clinical_records (
     record_id          CHAR(32) NOT NULL,
     patient_id         CHAR(32) NOT NULL,
+    age                INT      NULL,
+    gender             VARCHAR(10) NULL,
     pregnancies        INT,
     glucose            DOUBLE   NOT NULL,
     blood_pressure     DOUBLE   NOT NULL,
@@ -61,9 +80,11 @@ CREATE TABLE IF NOT EXISTS predictions (
     patient_id      CHAR(32)    NOT NULL,
     predicted_class ENUM('Non-Diabetic','Pre-Diabetic','Diabetic') NOT NULL,
     probability_score DOUBLE    NOT NULL,
+    class_probabilities JSON     NULL,
     risk_score      INT         NOT NULL,
     risk_band       ENUM('Low','Moderate','High') NOT NULL,
     model_version   VARCHAR(30) NOT NULL,
+    model_artifact_sha256 VARCHAR(64) NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY     (prediction_id),
     KEY             ix_predictions_patient_id (patient_id),
@@ -82,6 +103,7 @@ CREATE TABLE IF NOT EXISTS explanations (
     shap_values    JSON,
     lime_values    JSON,
     top_features   JSON,
+    method         VARCHAR(100),
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY    (explanation_id),
     UNIQUE KEY     uq_explanations_prediction_id (prediction_id),

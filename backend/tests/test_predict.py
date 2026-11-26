@@ -89,6 +89,27 @@ class TestPrediction:
         assert "class_probabilities" in data
         assert "explanation" in data
         assert "recommendations" in data
+        assert set(data["class_probabilities"]) == {"Non-Diabetic", "Pre-Diabetic", "Diabetic"}
+
+    def test_prediction_history_is_scoped_and_probabilities_are_persisted(self, client, auth_headers_doctor, sample_patient, db):
+        from database.models.prediction import Prediction
+        from backend.app.routes.auth_routes import create_access_token, hash_password
+        from database.models.user import User
+
+        result = self._predict(client, auth_headers_doctor, sample_patient.patient_id).json()
+        stored = db.query(Prediction).filter(Prediction.prediction_id == uuid.UUID(result["prediction_id"])).one()
+        assert stored.class_probabilities == result["class_probabilities"]
+        assert stored.model_artifact_sha256 is None  # Demo stub has no serialized artifact.
+
+        other = User(full_name="Other Doctor", email="other2@test.com",
+                     password_hash=hash_password("Other@123"), role="doctor")
+        db.add(other)
+        db.commit()
+        headers = {"Authorization": f"Bearer {create_access_token({'sub': str(other.user_id)})}"}
+        detail = client.get(f"/api/predictions/{result['prediction_id']}", headers=headers)
+        history = client.get("/api/predictions", headers=headers)
+        assert detail.status_code == 404
+        assert history.json()["total"] == 0
 
     def test_predict_nonexistent_patient_returns_404(self, client, auth_headers_doctor, doctor_user):
         response = client.post(

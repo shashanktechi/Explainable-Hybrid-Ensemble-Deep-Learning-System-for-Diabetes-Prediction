@@ -4,6 +4,19 @@ Patient CRUD tests.
 
 
 class TestPatientCRUD:
+    def test_patient_access_is_limited_to_owner_or_admin(self, client, sample_patient, db):
+        import uuid
+        from backend.app.routes.auth_routes import create_access_token, hash_password
+        from database.models.user import User
+
+        other = User(user_id=uuid.uuid4(), full_name="Other Doctor", email="other@test.com",
+                     password_hash=hash_password("Other@123"), role="doctor")
+        db.add(other)
+        db.commit()
+        headers = {"Authorization": f"Bearer {create_access_token({'sub': str(other.user_id)})}"}
+        response = client.get(f"/api/patients/{sample_patient.patient_id}", headers=headers)
+        assert response.status_code == 404
+
     def test_create_patient(self, client, auth_headers_doctor, doctor_user):
         response = client.post(
             "/api/patients",

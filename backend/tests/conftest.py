@@ -74,6 +74,22 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture
+def otp_codes(monkeypatch):
+    """Capture outbound test codes without sending email or exposing them via the API."""
+    from backend.app.routes import auth_routes
+    from backend.app.services import otp_service
+
+    codes = {}
+    monkeypatch.setattr(auth_routes, "email_delivery_configured", lambda: True)
+    monkeypatch.setattr(
+        otp_service,
+        "send_otp_email",
+        lambda email, purpose, code, _expires: codes.__setitem__((email, purpose), code),
+    )
+    return codes
+
+
 # ── Direct DB session for assertions ──────────────────────────────────────────
 
 @pytest.fixture

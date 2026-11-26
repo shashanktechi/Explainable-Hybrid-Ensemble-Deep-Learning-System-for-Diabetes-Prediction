@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { apiChangePassword } from '../services/api';
+import { apiChangePassword, apiRequestPasswordChangeOtp } from '../services/api';
 import toast from 'react-hot-toast';
 
 // ── Zod Schema ──
@@ -38,6 +38,7 @@ const changePasswordSchema = z
     confirm_new_password: z
       .string()
       .min(1, 'Please confirm your new password'),
+    otp: z.string().regex(/^\d{6}$/, 'Enter the six-digit email code'),
   })
   .refine((data) => data.new_password === data.confirm_new_password, {
     message: 'Passwords do not match',
@@ -112,11 +113,13 @@ function ChangePasswordSection() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [requestingCode, setRequestingCode] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(changePasswordSchema),
@@ -124,6 +127,7 @@ function ChangePasswordSection() {
       current_password: '',
       new_password: '',
       confirm_new_password: '',
+      otp: '',
     },
   });
 
@@ -133,6 +137,7 @@ function ChangePasswordSection() {
       await apiChangePassword({
         current_password: data.current_password,
         new_password: data.new_password,
+        otp: data.otp,
       });
       toast.success('Password updated successfully!');
       reset();
@@ -142,6 +147,18 @@ function ChangePasswordSection() {
       toast.error(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const requestCode = async () => {
+    setRequestingCode(true);
+    try {
+      const response = await apiRequestPasswordChangeOtp();
+      toast.success(response.data.message);
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Could not send a code. Try again later.');
+    } finally {
+      setRequestingCode(false);
     }
   };
 
@@ -179,7 +196,7 @@ function ChangePasswordSection() {
       <SectionHeader
         icon={KeyRound}
         title="Change Password"
-        description="Update your account password"
+        description="Confirm your current password and email code to update it"
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md">
@@ -220,6 +237,25 @@ function ChangePasswordSection() {
             )}
           </div>
         ))}
+
+        <div>
+          <label htmlFor="password-change-otp" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Email verification code
+          </label>
+          <input
+            id="password-change-otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            {...register('otp')}
+            onChange={(event) => setValue('otp', event.target.value.replace(/\D/g, '').slice(0, 6))}
+            className={`form-input w-full ${errors.otp ? 'form-input-error' : ''}`}
+          />
+          {errors.otp && <p className="mt-1 text-xs text-red-500">{errors.otp.message}</p>}
+          <button type="button" onClick={requestCode} disabled={requestingCode} className="mt-2 text-sm font-medium text-accent-500 disabled:opacity-50">
+            {requestingCode ? 'Sending…' : 'Email me a code'}
+          </button>
+        </div>
 
         <div className="pt-2">
           <button

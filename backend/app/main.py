@@ -2,7 +2,7 @@
 FastAPI application — CORS, router registration, health check.
 """
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -45,7 +45,9 @@ def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
         db_status = "connected"
-    except Exception:
-        db_status = "error"
+    except Exception as exc:
+        logger.exception("Health check database query failed")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail={"status": "error", "db": "unavailable"}) from exc
 
-    return {"status": "ok", "db": db_status}
+    return {"status": "ok", "db": "connected"}

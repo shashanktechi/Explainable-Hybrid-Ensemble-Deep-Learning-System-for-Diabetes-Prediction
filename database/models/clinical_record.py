@@ -6,7 +6,7 @@ MySQL-compatible: UUID stored as CHAR(32) via SQLAlchemy Uuid(native_uuid=False)
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Float, Integer, DateTime, ForeignKey, Index, func, Uuid
+from sqlalchemy import Float, Integer, String, DateTime, ForeignKey, Index, func, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.db_connection import Base
@@ -24,6 +24,8 @@ class ClinicalRecord(Base):
         ForeignKey("patients.patient_id", ondelete="CASCADE"),
         nullable=False,
     )
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(10), nullable=True)
     pregnancies: Mapped[int | None] = mapped_column(Integer, nullable=True)
     glucose: Mapped[float] = mapped_column(Float, nullable=False)
     blood_pressure: Mapped[float] = mapped_column(Float, nullable=False)

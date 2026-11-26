@@ -60,6 +60,8 @@ class ClinicalRecordCreate(BaseModel):
 class ClinicalRecordOut(BaseModel):
     record_id: uuid.UUID
     patient_id: uuid.UUID
+    age: int | None = None
+    gender: str | None = None
     pregnancies: int | None = None
     glucose: float
     blood_pressure: float

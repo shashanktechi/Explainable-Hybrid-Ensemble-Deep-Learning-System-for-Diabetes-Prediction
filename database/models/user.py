@@ -6,7 +6,7 @@ MySQL-compatible: UUID stored as CHAR(32) via SQLAlchemy Uuid(native_uuid=False)
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Enum, DateTime, func, Uuid
+from sqlalchemy import String, Enum, DateTime, func, Uuid, Boolean, Integer, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.db_connection import Base
@@ -27,6 +27,9 @@ class User(Base):
         nullable=False,
     )
     hospital_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    # Existing accounts remain usable; self-registration explicitly sets False.
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(),
         default=lambda: datetime.now(timezone.utc),

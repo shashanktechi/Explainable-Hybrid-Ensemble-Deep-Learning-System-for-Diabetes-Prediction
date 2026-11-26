@@ -1,14 +1,16 @@
 """
-Prediction service — abstract interface + stub and real implementations.
+Prediction service — stub and persisted ensemble artifact implementations.
 
-The real ML (DNN + XGBoost + LightGBM -> Stack-DNN) will be built separately
-in ml/ and plugged in by switching USE_STUB_MODEL=false.
+The local Pima artifact is exploratory only. Production model selection remains
+an explicit deployment configuration decision.
 """
 
 from abc import ABC, abstractmethod
 
 from backend.app.config import settings
 from backend.app.utils.logger import get_logger
+from pathlib import Path
+import hashlib
 
 logger = get_logger(__name__)
 
@@ -27,7 +29,6 @@ class Predictor(ABC):
 
 class StubPredictor(Predictor):
     """
-    # STUB — replace with real model in ml/
     Deterministic, rule-based predictor.
     Higher glucose / bmi / hba1c => higher Diabetic probability.
     Same input always produces the same output.
@@ -93,28 +94,32 @@ class StubPredictor(Predictor):
 
         # Normalize so they sum to exactly 1
         total = p_nondiabetic + p_prediabetic + p_diabetic
+        p_prediabetic = round(p_prediabetic / total, 6)
+        p_diabetic = round(p_diabetic / total, 6)
+        # Compute the residual class after rounding the other two classes so
+        # serialization cannot produce a probability vector that fails the
+        # API's normalization check.
+        p_nondiabetic = round(1.0 - p_prediabetic - p_diabetic, 6)
         return {
-            "Non-Diabetic": round(p_nondiabetic / total, 4),
-            "Pre-Diabetic": round(p_prediabetic / total, 4),
-            "Diabetic": round(p_diabetic / total, 4),
+            "Non-Diabetic": p_nondiabetic,
+            "Pre-Diabetic": p_prediabetic,
+            "Diabetic": p_diabetic,
         }
 
 
 class RealPredictor(Predictor):
-    """
-    # STUB — replace with real model in ml/
-    Placeholder that will load ensemble files from ml/saved_models/.
-    """
-
     def __init__(self) -> None:
-        raise NotImplementedError(
-            "RealPredictor is not yet implemented. "
-            "Set USE_STUB_MODEL=true in .env, or implement the ensemble "
-            "model loading in ml/ and update this class."
-        )
+        from ml.predict import EnsemblePredictor
+        self._model = EnsemblePredictor(settings.model_artifact_path)
+        self.classes = self._model.classes
+        self.artifact_sha256 = hashlib.sha256(Path(settings.model_artifact_path).read_bytes()).hexdigest()
+        self.version = settings.model_version
 
     def predict_proba(self, features: dict) -> dict[str, float]:
-        raise NotImplementedError
+        return self._model.predict_proba(features)
+
+    def explain(self, features: dict):
+        return self._model.explain(features)
 
 
 def get_predictor() -> Predictor:
@@ -123,7 +128,7 @@ def get_predictor() -> Predictor:
         logger.info("Using StubPredictor (USE_STUB_MODEL=true)")
         return StubPredictor()
     else:
-        logger.info("Loading RealPredictor from ml/saved_models/")
+        logger.info("Loading model artifact from %s", settings.model_artifact_path)
         return RealPredictor()
 
 

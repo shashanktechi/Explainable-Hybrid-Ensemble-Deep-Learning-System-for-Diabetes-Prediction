@@ -13,7 +13,7 @@ COPY .env.example .env.example
 ENV PYTHONPATH=/app
 
 # Install dependencies
-RUN pip install --no-cache-dir -r backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt -r ml/requirements.txt
 
 # Expose port (Render sets $PORT at runtime)
 EXPOSE 8000

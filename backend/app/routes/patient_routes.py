@@ -50,8 +50,11 @@ def _generate_patient_code(db: Session) -> str:
     return f"PAT-{num:06d}"
 
 
-def _get_patient_or_404(db: Session, patient_id: uuid.UUID) -> Patient:
-    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+def _get_patient_or_404(db: Session, patient_id: uuid.UUID, user: User) -> Patient:
+    query = db.query(Patient).filter(Patient.patient_id == patient_id)
+    if user.role != "admin":
+        query = query.filter(Patient.created_by == user.user_id)
+    patient = query.first()
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -98,6 +101,8 @@ def list_patients(
 ):
     """List patients (paginated, searchable by patient_code or name)."""
     query = db.query(Patient)
+    if current_user.role != "admin":
+        query = query.filter(Patient.created_by == current_user.user_id)
 
     if search:
         pattern = f"%{search}%"
@@ -126,7 +131,7 @@ def get_patient(
     db: Session = Depends(get_db),
 ):
     """Get a single patient by ID."""
-    return _get_patient_or_404(db, patient_id)
+    return _get_patient_or_404(db, patient_id, current_user)
 
 
 @router.put("/{patient_id}", response_model=PatientOut)
@@ -137,7 +142,7 @@ def update_patient(
     db: Session = Depends(get_db),
 ):
     """Update patient demographics."""
-    patient = _get_patient_or_404(db, patient_id)
+    patient = _get_patient_or_404(db, patient_id, current_user)
 
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -159,7 +164,7 @@ def delete_patient(
     db: Session = Depends(get_db),
 ):
     """Delete a patient (admin only). Cascades to clinical records, predictions, etc."""
-    patient = _get_patient_or_404(db, patient_id)
+    patient = _get_patient_or_404(db, patient_id, admin)
 
     log_audit(db, admin.user_id, "deleted_patient", "patients", patient.patient_id)
     db.delete(patient)
@@ -182,10 +187,12 @@ def add_clinical_record(
     db: Session = Depends(get_db),
 ):
     """Add a clinical record (lab values) for a patient."""
-    _get_patient_or_404(db, patient_id)
+    patient = _get_patient_or_404(db, patient_id, current_user)
 
     record = ClinicalRecord(
         patient_id=patient_id,
+        age=patient.age,
+        gender=patient.gender,
         pregnancies=body.pregnancies,
         glucose=body.glucose,
         blood_pressure=body.blood_pressure,
@@ -196,6 +203,8 @@ def add_clinical_record(
         diabetes_pedigree_fn=body.diabetes_pedigree_fn,
     )
     db.add(record)
+    db.flush()
+    log_audit(db, current_user.user_id, "created_clinical_record", "clinical_records", record.record_id)
     db.commit()
     db.refresh(record)
     return record
@@ -208,7 +217,7 @@ def list_clinical_records(
     db: Session = Depends(get_db),
 ):
     """List clinical records for a patient."""
-    _get_patient_or_404(db, patient_id)
+    _get_patient_or_404(db, patient_id, current_user)
     return (
         db.query(ClinicalRecord)
         .filter(ClinicalRecord.patient_id == patient_id)
@@ -226,7 +235,7 @@ def list_patient_predictions(
     db: Session = Depends(get_db),
 ):
     """Prediction history for a patient (newest first) — for HistoryPage."""
-    _get_patient_or_404(db, patient_id)
+    _get_patient_or_404(db, patient_id, current_user)
 
     predictions = (
         db.query(Prediction)

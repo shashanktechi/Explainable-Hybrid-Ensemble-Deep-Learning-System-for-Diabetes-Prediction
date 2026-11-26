@@ -7,7 +7,7 @@ JSON column type works natively on MySQL 8.0+ and SQLite (as TEXT).
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, JSON, func, Uuid
+from sqlalchemy import DateTime, ForeignKey, JSON, String, func, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.db_connection import Base
@@ -29,6 +29,7 @@ class Explanation(Base):
     shap_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     lime_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     top_features: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    method: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(),
         default=lambda: datetime.now(timezone.utc),

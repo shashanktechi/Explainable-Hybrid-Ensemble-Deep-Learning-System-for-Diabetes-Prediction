@@ -25,6 +25,7 @@ class ExplanationOut(BaseModel):
     shap_values: dict[str, float]
     lime_values: dict[str, float]
     top_features: list[str]
+    method: str = "heuristic (stub predictor)"
 
 
 class RecommendationOut(BaseModel):

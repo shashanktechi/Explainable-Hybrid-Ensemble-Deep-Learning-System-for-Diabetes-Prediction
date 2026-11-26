@@ -266,6 +266,9 @@ export default function ResultPage() {
           <p className="mt-4 text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
             {classInfo.description}
           </p>
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+            Decision support only. This score is not a diagnosis; review results and next steps with a qualified clinician.
+          </p>
         </motion.div>
 
         {/* Class Probabilities Card */}
@@ -366,6 +369,9 @@ export default function ResultPage() {
           topFeatures={prediction.explanation?.top_features}
         />
       </motion.div>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Explanation method: {prediction.explanation?.method || 'not specified'}. Heuristic explanations from demo mode are not SHAP or LIME.
+      </p>
 
       {/* ── Recommendations ── */}
       <motion.div

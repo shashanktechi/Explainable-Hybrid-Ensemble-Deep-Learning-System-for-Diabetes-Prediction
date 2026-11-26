@@ -242,7 +242,17 @@ const mockApi = {
 
   register: async (data) => {
     await mockDelay();
-    return { data: { ...MOCK_USER, ...data, user_id: crypto.randomUUID(), created_at: new Date().toISOString() } };
+    return { data: { message: 'If this address can be registered, a verification code has been sent.', email: data.email } };
+  },
+
+  verifyEmail: async ({ email }) => {
+    await mockDelay();
+    return { data: { message: 'Email verified. You can now sign in.', email } };
+  },
+
+  resendVerification: async () => {
+    await mockDelay();
+    return { data: { message: 'If the account needs verification, a code has been sent.' } };
   },
 
   getMe: async () => {
@@ -454,17 +464,33 @@ const mockApi = {
     return { data: { message: 'Password changed successfully' } };
   },
 
+  requestPasswordChangeOtp: async () => {
+    await mockDelay();
+    return { data: { message: 'If eligible, a password change code has been sent.' } };
+  },
+
   forgotPassword: async () => {
     await mockDelay();
-    return { data: { message: 'If an account with that email exists, a reset link has been sent.' } };
+    return { data: { message: 'If an account exists for this email, a password reset code has been sent.' } };
+  },
+
+  resetPassword: async () => {
+    await mockDelay();
+    return { data: { message: 'Password updated. You can now sign in.' } };
   },
 };
 
 // ── Real API Functions ──
 const realApi = {
-  login: ({ email, password }) => http.post('/api/auth/login', { email, password }),
+  login: ({ email, password }) => http.post('/api/auth/login', new URLSearchParams({ username: email, password }), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  }),
 
   register: (data) => http.post('/api/auth/register', data),
+
+  verifyEmail: (data) => http.post('/api/auth/verify-email', data),
+
+  resendVerification: (data) => http.post('/api/auth/resend-verification', data),
 
   getMe: () => http.get('/api/auth/me'),
 
@@ -491,7 +517,11 @@ const realApi = {
 
   changePassword: (data) => http.put('/api/auth/password', data),
 
+  requestPasswordChangeOtp: () => http.post('/api/auth/password-change-otp'),
+
   forgotPassword: (data) => http.post('/api/auth/forgot-password', data),
+
+  resetPassword: (data) => http.post('/api/auth/reset-password', data),
 };
 
 // ── Export the active API based on VITE_USE_MOCK ──
@@ -499,6 +529,8 @@ const api = USE_MOCK ? mockApi : realApi;
 
 export const apiLogin = api.login;
 export const apiRegister = api.register;
+export const apiVerifyEmail = api.verifyEmail;
+export const apiResendVerification = api.resendVerification;
 export const apiGetMe = api.getMe;
 export const apiPredict = api.predict;
 export const apiGetPrediction = api.getPrediction;
@@ -507,7 +539,9 @@ export const apiGetPatient = api.getPatient;
 export const apiGetPatients = api.getPatients;
 export const apiGetDashboardStats = api.getDashboardStats;
 export const apiChangePassword = api.changePassword;
+export const apiRequestPasswordChangeOtp = api.requestPasswordChangeOtp;
 export const apiForgotPassword = api.forgotPassword;
+export const apiResetPassword = api.resetPassword;
 
 export default http;
 

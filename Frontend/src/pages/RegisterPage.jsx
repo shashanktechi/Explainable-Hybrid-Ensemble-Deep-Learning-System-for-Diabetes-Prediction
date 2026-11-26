@@ -12,7 +12,6 @@ import {
   EyeOff,
   User,
   Building2,
-  ShieldCheck,
   Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -36,9 +35,6 @@ const registerSchema = z
       .regex(/\d/, 'Password must contain at least one number'),
     confirm_password: z.string().min(1, 'Please confirm your password'),
     hospital_name: z.string().optional(),
-    role: z.enum(['doctor', 'admin'], {
-      error: 'Please select a role',
-    }),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: 'Passwords do not match',
@@ -89,7 +85,6 @@ export default function RegisterPage() {
       password: '',
       confirm_password: '',
       hospital_name: '',
-      role: '',
     },
   });
 
@@ -104,13 +99,15 @@ export default function RegisterPage() {
 
   const onSubmit = async (data) => {
     try {
-      const { confirm_password, ...payload } = data;
+      const payload = { ...data };
+      delete payload.confirm_password;
       if (!payload.hospital_name) {
         delete payload.hospital_name;
       }
-      await registerAccount(payload);
-      toast.success('Account created successfully! Please sign in.');
-      navigate('/login', { replace: true });
+      const result = await registerAccount(payload);
+      const verificationEmail = result?.email || payload.email;
+      toast.success('Enter the verification code sent to your email.');
+      navigate(`/verify-email?email=${encodeURIComponent(verificationEmail)}`, { replace: true });
     } catch (error) {
       const message =
         error?.response?.data?.detail ||
@@ -369,48 +366,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Role */}
-            <div>
-              <label
-                htmlFor="reg-role"
-                className="mb-1.5 block font-body text-sm font-medium text-slate-900 dark:text-slate-100"
-              >
-                Role
-              </label>
-              <div className="relative">
-                <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <select
-                  id="reg-role"
-                  aria-invalid={errors.role ? 'true' : 'false'}
-                  aria-describedby={errors.role ? 'reg-role-error' : undefined}
-                  className="form-input w-full appearance-none pl-10 pr-10"
-                  defaultValue=""
-                  {...register('role')}
-                >
-                  <option value="" disabled>
-                    Select your role
-                  </option>
-                  <option value="doctor">Doctor</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-              {errors.role && (
-                <p id="reg-role-error" role="alert" className="mt-1.5 text-xs text-red-500">
-                  {errors.role.message}
-                </p>
-              )}
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              New self-registered accounts receive doctor access. Admin accounts are provisioned by an existing administrator.
+            </p>
 
             {/* Submit */}
             <button

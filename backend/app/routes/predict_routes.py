@@ -7,6 +7,7 @@ from typing import Annotated
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
@@ -50,6 +51,37 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["Predictions"])
 
 
+@router.get("/api/predictions")
+def list_predictions(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+    risk_band: str | None = Query(None, pattern="^(Low|Moderate|High)$"),
+    search: str | None = Query(None, max_length=100),
+):
+    """List prediction history, restricted to owned patients or admins."""
+    query = db.query(Prediction).join(Patient, Prediction.patient_id == Patient.patient_id)
+    if current_user.role != "admin":
+        query = query.filter(Patient.created_by == current_user.user_id)
+    if risk_band:
+        query = query.filter(Prediction.risk_band == risk_band)
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(or_(Patient.full_name.ilike(pattern), Patient.patient_code.ilike(pattern)))
+    total = query.count()
+    rows = query.order_by(Prediction.created_at.desc()).offset((page - 1) * size).limit(size).all()
+    items = [{"prediction_id": str(item.prediction_id), "record_id": str(item.record_id),
+              "patient_id": str(item.patient_id), "patient_name": item.patient.full_name,
+              "patient_code": item.patient.patient_code, "predicted_class": item.predicted_class,
+              "probability_score": item.probability_score, "class_probabilities": item.class_probabilities,
+              "risk_score": item.risk_score, "risk_band": item.risk_band,
+              "model_version": item.model_version,
+              "created_at": item.created_at.isoformat() if item.created_at else None}
+             for item in rows]
+    return {"items": items, "total": total, "page": page, "size": size}
+
+
 def _build_response(
     prediction: Prediction,
     class_probabilities: dict[str, float],
@@ -57,6 +89,7 @@ def _build_response(
     lime_values: dict[str, float],
     top_features: list[str],
     recommendations_data: list[dict[str, str]],
+    explanation_method: str = "heuristic (stub predictor)",
 ) -> PredictResponse:
     """Build the exact JSON response shape from spec §5."""
     return PredictResponse(
@@ -73,6 +106,7 @@ def _build_response(
             shap_values=shap_values,
             lime_values=lime_values,
             top_features=top_features,
+            method=explanation_method,
         ),
         recommendations=[
             RecommendationOut(category=r["category"], text=r["text"])
@@ -101,12 +135,17 @@ def run_prediction(
     7. audit_log 'ran_prediction'
     """
     # 0. Check patient exists
-    patient = db.query(Patient).filter(Patient.patient_id == body.patient_id).first()
+    patient_query = db.query(Patient).filter(Patient.patient_id == body.patient_id)
+    if current_user.role != "admin":
+        patient_query = patient_query.filter(Patient.created_by == current_user.user_id)
+    patient = patient_query.first()
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
     # 1. Validate input
     features = {
+        "age": patient.age,
+        "gender": patient.gender,
         "pregnancies": body.pregnancies,
         "glucose": body.glucose,
         "blood_pressure": body.blood_pressure,
@@ -126,6 +165,8 @@ def run_prediction(
     # 2. Save clinical record
     record = ClinicalRecord(
         patient_id=body.patient_id,
+        age=patient.age,
+        gender=patient.gender,
         pregnancies=body.pregnancies,
         glucose=body.glucose,
         blood_pressure=body.blood_pressure,
@@ -139,7 +180,14 @@ def run_prediction(
     db.flush()  # get record_id
 
     # 3. Predict
-    class_probabilities = predictor.predict_proba(features)
+    try:
+        class_probabilities = predictor.predict_proba(features)
+    except (ValueError, FileNotFoundError) as exc:
+        logger.error("Configured prediction artifact does not match the API input contract: %s", exc)
+        raise HTTPException(status_code=503, detail="Prediction model is unavailable for this input contract") from exc
+    if (not class_probabilities or any(not 0.0 <= float(value) <= 1.0 for value in class_probabilities.values())
+            or abs(sum(class_probabilities.values()) - 1.0) > 1e-5):
+        raise HTTPException(status_code=503, detail="Prediction model returned invalid probabilities")
 
     # Determine predicted class (highest probability)
     predicted_class = max(class_probabilities, key=class_probabilities.get)  # type: ignore[arg-type]
@@ -150,10 +198,24 @@ def run_prediction(
     risk_band = compute_risk_band(risk_score)
 
     # 5. Explanations
-    shap_values = compute_shap_values(features)
-    lime_values = compute_lime_values(features)
+    try:
+        if hasattr(predictor, "explain"):
+            shap_values, lime_values = predictor.explain(features)
+            explanation_method = "Kernel SHAP + LIME"
+        else:
+            shap_values = compute_shap_values(features, predictor)
+            lime_values = compute_lime_values(features, predictor)
+            explanation_method = "heuristic (stub predictor)"
+    except (RuntimeError, ValueError) as exc:
+        logger.exception("Model explanation failed")
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     top_features = compute_top_features(shap_values)
     recommendations_data = generate_recommendations(risk_band, top_features, features)
+
+    # Keep model label mapping explicit; this persistence/API contract is
+    # three-class and must not silently reinterpret binary datasets.
+    if set(class_probabilities) != {"Non-Diabetic", "Pre-Diabetic", "Diabetic"}:
+        raise HTTPException(status_code=503, detail="Model labels must be explicitly mapped to the API classes before serving")
 
     # 6. Save prediction
     prediction_row = Prediction(
@@ -161,9 +223,11 @@ def run_prediction(
         patient_id=body.patient_id,
         predicted_class=predicted_class,
         probability_score=probability_score,
+        class_probabilities=class_probabilities,
         risk_score=risk_score,
         risk_band=risk_band,
         model_version=settings.model_version,
+        model_artifact_sha256=getattr(predictor, "artifact_sha256", None),
     )
     db.add(prediction_row)
     db.flush()
@@ -174,6 +238,7 @@ def run_prediction(
         shap_values=shap_values,
         lime_values=lime_values,
         top_features=top_features,
+        method=explanation_method,
     )
     db.add(explanation_row)
 
@@ -200,7 +265,7 @@ def run_prediction(
 
     return _build_response(
         prediction_row, class_probabilities,
-        shap_values, lime_values, top_features, recommendations_data,
+        shap_values, lime_values, top_features, recommendations_data, explanation_method,
     )
 
 
@@ -213,11 +278,14 @@ def get_prediction(
     db: Session = Depends(get_db),
 ):
     """Retrieve a prediction by ID (from DB). Logs 'viewed_prediction'."""
-    prediction = (
+    prediction_query = (
         db.query(Prediction)
+        .join(Patient, Prediction.patient_id == Patient.patient_id)
         .filter(Prediction.prediction_id == prediction_id)
-        .first()
     )
+    if current_user.role != "admin":
+        prediction_query = prediction_query.filter(Patient.created_by == current_user.user_id)
+    prediction = prediction_query.first()
     if not prediction:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
 
@@ -242,9 +310,8 @@ def get_prediction(
         for r in recs
     ]
 
-    # Reconstruct class_probabilities from stored data
-    # Since we only store probability_score, reconstruct using the predictor
-    # For the stored prediction, we'll use the explanation to approximate
+    # Return the probabilities recorded with this model run. Legacy rows
+    # without a stored vector are explicitly reported as non-reproducible.
     class_probabilities = _reconstruct_class_probabilities(prediction)
 
     # Audit
@@ -254,46 +321,17 @@ def get_prediction(
     return _build_response(
         prediction, class_probabilities,
         shap_values, lime_values, top_features, recommendations_data,
+        explanation.method if explanation and explanation.method else "legacy explanation (method unknown)",
     )
 
 
 def _reconstruct_class_probabilities(prediction: Prediction) -> dict[str, float]:
-    """
-    Reconstruct class probabilities from the stored clinical record.
-    Re-runs the predictor on the original features for consistency.
-    """
-    record = prediction.clinical_record
-    if not record:
-        # Fallback: derive from predicted_class and probability_score
-        return _fallback_probabilities(prediction.predicted_class, prediction.probability_score)
-
-    features = {
-        "pregnancies": record.pregnancies,
-        "glucose": record.glucose,
-        "blood_pressure": record.blood_pressure,
-        "skin_thickness": record.skin_thickness,
-        "insulin": record.insulin,
-        "bmi": record.bmi,
-        "hba1c": record.hba1c,
-        "diabetes_pedigree_fn": record.diabetes_pedigree_fn,
-    }
-    return predictor.predict_proba(features)
-
-
-def _fallback_probabilities(predicted_class: str, probability_score: float) -> dict[str, float]:
-    """Fallback when clinical record is not available."""
-    if predicted_class == "Diabetic":
-        return {"Non-Diabetic": round(1 - probability_score, 4) * 0.3,
-                "Pre-Diabetic": round(1 - probability_score, 4) * 0.7,
-                "Diabetic": probability_score}
-    elif predicted_class == "Pre-Diabetic":
-        return {"Non-Diabetic": round(1 - probability_score, 4),
-                "Pre-Diabetic": probability_score,
-                "Diabetic": 0.0}
-    else:
-        return {"Non-Diabetic": probability_score,
-                "Pre-Diabetic": round(1 - probability_score, 4),
-                "Diabetic": 0.0}
+    if prediction.class_probabilities:
+        return prediction.class_probabilities
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="This legacy prediction has no stored class probabilities and cannot be reproduced from its current model version",
+    )
 
 
 # ---------- GET /api/models ----------

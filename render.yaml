@@ -19,5 +19,7 @@ services:
         value: stub-v0
       - key: USE_STUB_MODEL
         value: "true"
+      - key: MODEL_ARTIFACT_PATH
+        value: ml/saved_models/xai_hedl.joblib
       - key: LOG_LEVEL
         value: INFO

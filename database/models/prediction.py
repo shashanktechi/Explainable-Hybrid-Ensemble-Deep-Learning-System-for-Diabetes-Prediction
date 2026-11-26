@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Float, Integer, String, Enum, DateTime,
+    Float, Integer, String, Enum, DateTime, JSON,
     ForeignKey, Index, CheckConstraint, func, Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -38,12 +38,14 @@ class Prediction(Base):
         nullable=False,
     )
     probability_score: Mapped[float] = mapped_column(Float, nullable=False)
+    class_probabilities: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)
     risk_band: Mapped[str] = mapped_column(
         Enum("Low", "Moderate", "High", name="risk_band_type"),
         nullable=False,
     )
     model_version: Mapped[str] = mapped_column(String(30), nullable=False)
+    model_artifact_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(),
         default=lambda: datetime.now(timezone.utc),

@@ -1,0 +1,940 @@
+{
+  "info": {
+    "name": "XAI-HEDL Backend API - Local Smoke and Access Tests",
+    "description": "Local disposable-database API checks. Run only against the isolated Postman test server started from the README instructions. Uses synthetic test accounts and patient data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "adminEmail",
+      "value": "postman-admin@example.test"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Postman-Test-Only-2026!"
+    },
+    {
+      "key": "doctorEmail",
+      "value": "postman-doctor@example.com"
+    },
+    {
+      "key": "doctorPassword",
+      "value": "Postman-Doctor-Only-2026!"
+    },
+    {
+      "key": "expectedExplanation",
+      "value": "stub"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('health and database are connected', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().db).to.eql('connected'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "OpenAPI route inventory",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/openapi.json"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('OpenAPI schema includes all custom backend routes', function () { pm.response.to.have.status(200); var paths = Object.keys(pm.response.json().paths); [\"/api/health\",\"/api/auth/login\",\"/api/auth/me\",\"/api/auth/register\",\"/api/auth/verify-email\",\"/api/auth/resend-verification\",\"/api/auth/forgot-password\",\"/api/auth/reset-password\",\"/api/auth/password\",\"/api/auth/users\",\"/api/patients\",\"/api/patients/{patient_id}\",\"/api/patients/{patient_id}/records\",\"/api/patients/{patient_id}/predictions\",\"/api/predict\",\"/api/predictions\",\"/api/predictions/{prediction_id}\",\"/api/models\",\"/api/audit\"].forEach(function (path) { pm.expect(paths).to.include(path); }); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registration requires mail and rejects verified duplicate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"full_name\":\"Postman Test Doctor\",\"email\":\"{{doctorEmail}}\",\"password\":\"{{doctorPassword}}\",\"hospital_name\":\"Local Test Hospital\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/register"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('registration fails closed or rejects an already verified address', function () { pm.expect([409,503]).to.include(pm.response.code); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verify email rejects unknown challenge",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"unknown@example.com\",\"otp\":\"123456\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/verify-email"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('email verification rejects absent and invalid codes', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resend verification requires configured mail",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"unknown@example.com\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/resend-verification"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('resend is generic and never claims an unavailable send succeeded', function () { pm.expect([200,503]).to.include(pm.response.code); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forgot password requires configured mail",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"unknown@example.com\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/forgot-password"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('forgot-password is generic and never claims an unavailable send succeeded', function () { pm.expect([200,503]).to.include(pm.response.code); if (pm.response.code === 200) pm.expect(pm.response.json().message).to.include('If an account exists'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reset password rejects unknown code",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\":\"unknown@example.com\",\"otp\":\"123456\",\"new_password\":\"New-Safe-Test-Password-2026!\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/reset-password"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('password reset requires an active code', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "{{doctorEmail}}"
+            },
+            {
+              "key": "password",
+              "value": "{{doctorPassword}}"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('seeded verified doctor can log in', function () { pm.response.to.have.status(200); var body = pm.response.json(); pm.expect(body.token_type).to.eql('bearer'); pm.collectionVariables.set('doctorToken', body.access_token); pm.collectionVariables.set('doctorId', body.user.user_id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('current user is the authenticated doctor', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().role).to.eql('doctor'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth required",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('private route rejects missing token', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users denied to doctor",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('admin-only user listing rejects doctor', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor login rejected with wrong password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "{{doctorEmail}}"
+            },
+            {
+              "key": "password",
+              "value": "wrong-password"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('invalid credentials return unauthorized', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create patient",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"full_name\":\"Postman Synthetic Patient\",\"age\":45,\"gender\":\"F\",\"contact_number\":\"000-TEST-0001\"}"
+        },
+        "url": "{{baseUrl}}/api/patients"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient is created and assigned to doctor', function () { pm.response.to.have.status(201); var body = pm.response.json(); pm.expect(body.created_by).to.eql(pm.collectionVariables.get('doctorId')); pm.collectionVariables.set('patientId', body.patient_id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List patients",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients?page=1&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient list pagination works', function () { pm.response.to.have.status(200); var body = pm.response.json(); pm.expect(body.total).to.be.above(0); pm.expect(body.items).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get patient",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient detail is accessible to owner', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().patient_id).to.eql(pm.collectionVariables.get('patientId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Update patient",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"full_name\":\"Postman Synthetic Patient Updated\",\"age\":46}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient demographics update', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().age).to.eql(46); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create clinical record",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"pregnancies\":2,\"glucose\":140,\"blood_pressure\":80,\"skin_thickness\":25,\"insulin\":100,\"bmi\":31,\"hba1c\":6.7,\"diabetes_pedigree_fn\":0.4}"
+        },
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/records"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('clinical record is persisted', function () { pm.response.to.have.status(201); pm.expect(pm.response.json().glucose).to.eql(140); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List clinical records",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/records"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('clinical history is readable', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array').with.length.above(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid prediction input",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"patient_id\":\"{{patientId}}\",\"glucose\":0,\"blood_pressure\":80,\"insulin\":100,\"bmi\":31}"
+        },
+        "url": "{{baseUrl}}/api/predict"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('invalid clinical input is rejected', function () { pm.response.to.have.status(422); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create prediction",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"patient_id\":\"{{patientId}}\",\"pregnancies\":2,\"glucose\":140,\"blood_pressure\":80,\"skin_thickness\":25,\"insulin\":100,\"bmi\":31,\"hba1c\":6.7,\"diabetes_pedigree_fn\":0.4}"
+        },
+        "url": "{{baseUrl}}/api/predict"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('prediction returns scores, explanation and recommendations', function () { pm.response.to.have.status(201); var body = pm.response.json(); pm.expect(body.risk_score).to.be.within(0, 100); pm.expect(['Low', 'Moderate', 'High']).to.include(body.risk_band); pm.expect(body.class_probabilities).to.be.an('object'); pm.expect(body.explanation.method).to.include(pm.variables.get('expectedExplanation') || 'stub'); pm.expect(body.recommendations).to.be.an('array').with.length(3); pm.collectionVariables.set('predictionId', body.prediction_id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Prediction history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/predictions?page=1&size=10&risk_band=Low"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('prediction list filters and paginates', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().items).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get prediction",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/predictions/{{predictionId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('prediction history retains probabilities and explanation method', function () { pm.response.to.have.status(200); var body = pm.response.json(); pm.expect(body.class_probabilities).to.be.an('object'); pm.expect(body.explanation.method).to.include(pm.variables.get('expectedExplanation') || 'stub'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patient prediction history",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}/predictions"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient-specific prediction history works', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array').with.length.above(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List models",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/models"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('model registry endpoint responds', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit denied to doctor",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/audit?page=1&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('audit log endpoint enforces admin role', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete denied to doctor",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('patient deletion is admin-only', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "{{adminEmail}}"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('isolated test admin can log in', function () { pm.response.to.have.status(200); pm.collectionVariables.set('adminToken', pm.response.json().access_token); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin create user",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"full_name\":\"Postman Created User\",\"email\":\"postman-created@example.com\",\"password\":\"Postman-Created-Only-2026!\",\"role\":\"doctor\",\"hospital_name\":\"Local Test Hospital\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('admin creates a user without exposing a hash', function () { pm.response.to.have.status(201); pm.expect(pm.response.json().role).to.eql('doctor'); pm.expect(pm.response.json()).not.to.have.property('password_hash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin list users",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('admin can list users', function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array').with.length.above(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin audit log",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/audit?page=1&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('admin audit endpoint returns pagination and events', function () { pm.response.to.have.status(200); var body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body.total).to.be.above(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin delete patient",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('admin can delete synthetic test patient', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deleted patient is not found",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/patients/{{patientId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('deleted patient is no longer accessible', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Password change code requires SMTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/password-change-otp"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('password change code is not claimed sent without SMTP', function () { pm.response.to.have.status(503); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Password change rejects invalid OTP",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"current_password\":\"{{doctorPassword}}\",\"new_password\":\"Postman-Updated-Only-2026!\",\"otp\":\"000000\"}"
+        },
+        "url": "{{baseUrl}}/api/auth/password"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('password change requires a valid one-time email code', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor token remains valid after rejected password change",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('rejected password change does not revoke the session', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

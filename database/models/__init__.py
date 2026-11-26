@@ -4,6 +4,7 @@ Alembic and any code that does `from database.models import *` will pick them up
 """
 
 from database.models.user import User
+from database.models.email_otp_challenge import EmailOtpChallenge
 from database.models.patient import Patient
 from database.models.clinical_record import ClinicalRecord
 from database.models.prediction import Prediction

@@ -23,12 +23,24 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
+    # Outbound email for account verification and password recovery.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    otp_hash_secret: str | None = None
+    otp_expiration_minutes: int = 10
+    otp_resend_cooldown_seconds: int = 60
+    otp_max_attempts: int = 5
+
     # CORS
     cors_origins: str = "http://localhost:3000"  # comma-separated if multiple
 
     # ML stub
     model_version: str = "stub-v0"
     use_stub_model: bool = True
+    model_artifact_path: str = "ml/saved_models/xai_hedl.joblib"
 
     # Logging
     log_level: str = "INFO"
