@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ── Python: backend + ml tests ─────────────────────────────────────────────
+  python-tests:
+    name: "pytest (backend + ml)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Install ML dependencies (for SHAP/LIME tests)
+        run: |
+          pip install \
+            scikit-learn \
+            xgboost \
+            lightgbm \
+            joblib \
+            pandas \
+            numpy \
+            shap \
+            lime \
+            imbalanced-learn
+        # Continue even if optional packages fail — SHAP/LIME tests are skipped when absent
+        continue-on-error: false
+
+      # Tests use SQLite (via TEST_DATABASE_URL) — no real DB credentials needed.
+      - name: Run tests
+        env:
+          DATABASE_URL: "sqlite:///./ci_test.db"
+          JWT_SECRET: "ci-testing-secret-not-for-production"
+          MODEL_VERSION: "stub-v0"
+          USE_STUB_MODEL: "true"
+          MODEL_ARTIFACT_PATH: "ml/saved_models/pima-v1/xai_hedl.joblib"
+          LOG_LEVEL: "WARNING"
+        run: pytest backend/tests ml/tests -v --tb=short
+
+  # ── Frontend: lint + build ─────────────────────────────────────────────────
+  frontend:
+    name: "Frontend lint + build"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "Frontend/package-lock.json"
+
+      - name: Install npm dependencies
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: Frontend
+        run: npm run lint
+
+      - name: Build
+        working-directory: Frontend
+        env:
+          VITE_API_BASE_URL: "https://api.example.com"
+          VITE_USE_MOCK: "true"
+        run: npm run build
+

@@ -23,7 +23,6 @@ function useCountUp(target, duration = 1200) {
 
   useEffect(() => {
     if (target == null || target === 0) {
-      setCount(0);
       return;
     }
 
@@ -50,7 +49,7 @@ function useCountUp(target, duration = 1200) {
     };
   }, [target, duration]);
 
-  return count;
+  return target == null || target === 0 ? 0 : count;
 }
 
 // ── Skeleton Components ──
@@ -199,6 +198,8 @@ const staggerContainer = {
   },
 };
 
+const TODAY_LABEL = formatFullDate(new Date());
+
 // ── Main Dashboard Page ──
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -238,7 +239,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const today = formatFullDate(new Date());
+  const today = TODAY_LABEL;
 
   return (
     <motion.div

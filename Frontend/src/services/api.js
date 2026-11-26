@@ -478,6 +478,10 @@ const mockApi = {
     await mockDelay();
     return { data: { message: 'Password updated. You can now sign in.' } };
   },
+
+  downloadPredictionPdf: async () => {
+    throw new Error('PDF export requires the live FastAPI backend (set VITE_USE_MOCK=false).');
+  },
 };
 
 // ── Real API Functions ──
@@ -505,7 +509,22 @@ const realApi = {
     return http.get(`/api/predictions?${params.toString()}`);
   },
 
-  getPatient: (id) => http.get(`/api/patients/${id}`),
+  getPatient: async (id) => {
+    const [patientRes, recordsRes, predsRes] = await Promise.all([
+      http.get(`/api/patients/${id}`),
+      http.get(`/api/patients/${id}/records`),
+      http.get(`/api/patients/${id}/predictions`),
+    ]);
+    return {
+      data: {
+        ...patientRes.data,
+        clinical_records: recordsRes.data || [],
+        predictions: predsRes.data || [],
+      },
+    };
+  },
+
+  createPatient: (data) => http.post('/api/patients', data),
 
   getPatients: ({ page = 1, size = 20, search } = {}) => {
     const params = new URLSearchParams({ page, size });
@@ -513,7 +532,21 @@ const realApi = {
     return http.get(`/api/patients?${params.toString()}`);
   },
 
-  getDashboardStats: () => http.get('/api/dashboard/stats'),
+  getDashboardStats: async () => {
+    const [patientsRes, recentRes, highRiskRes] = await Promise.all([
+      http.get('/api/patients?page=1&size=1'),
+      http.get('/api/predictions?page=1&size=5'),
+      http.get('/api/predictions?page=1&size=1&risk_band=High'),
+    ]);
+    return {
+      data: {
+        total_patients: patientsRes.data?.total ?? 0,
+        predictions_this_week: recentRes.data?.total ?? 0,
+        high_risk_count: highRiskRes.data?.total ?? 0,
+        recent_predictions: recentRes.data?.items ?? [],
+      },
+    };
+  },
 
   changePassword: (data) => http.put('/api/auth/password', data),
 
@@ -522,6 +555,9 @@ const realApi = {
   forgotPassword: (data) => http.post('/api/auth/forgot-password', data),
 
   resetPassword: (data) => http.post('/api/auth/reset-password', data),
+
+  downloadPredictionPdf: (id) =>
+    http.get(`/api/predictions/${id}/pdf`, { responseType: 'blob' }),
 };
 
 // ── Export the active API based on VITE_USE_MOCK ──
@@ -536,12 +572,14 @@ export const apiPredict = api.predict;
 export const apiGetPrediction = api.getPrediction;
 export const apiGetPredictions = api.getPredictions;
 export const apiGetPatient = api.getPatient;
+export const apiCreatePatient = api.createPatient;
 export const apiGetPatients = api.getPatients;
 export const apiGetDashboardStats = api.getDashboardStats;
 export const apiChangePassword = api.changePassword;
 export const apiRequestPasswordChangeOtp = api.requestPasswordChangeOtp;
 export const apiForgotPassword = api.forgotPassword;
 export const apiResetPassword = api.resetPassword;
+export const apiDownloadPredictionPdf = api.downloadPredictionPdf;
 
 export default http;
 

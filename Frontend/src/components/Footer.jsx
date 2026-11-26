@@ -27,6 +27,9 @@ const footerSections = [
   },
 ];
 
+// Module-level constant avoids impure new Date() during render
+const CURRENT_YEAR = new Date().getFullYear();
+
 const Footer = () => {
   return (
     <footer className="bg-navy-950 border-t border-white/5">
@@ -74,7 +77,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-white/5 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} XAI-HEDL. All rights reserved.
+            &copy; {CURRENT_YEAR} XAI-HEDL. All rights reserved.
           </p>
           <p className="text-sm text-slate-500">
             Built for{' '}

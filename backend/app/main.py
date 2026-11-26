@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
-from backend.app.routes import auth_routes, patient_routes, predict_routes
+from backend.app.routes import auth_routes, patient_routes, predict_routes, pdf_routes
 from backend.app.utils.logger import get_logger
 from database.db_connection import get_db
 
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(auth_routes.router)
 app.include_router(patient_routes.router)
 app.include_router(predict_routes.router)
+app.include_router(pdf_routes.router)
 
 
 # ---------- Health check ----------

@@ -48,7 +48,7 @@ The training package supports explicitly configured binary and multiclass datase
 | Layer | Technology |
 |---|---|
 | Backend / API | Python (FastAPI) |
-| ML Core | TensorFlow/Keras (DNN), XGBoost, LightGBM, Scikit-Learn |
+| ML Core | Scikit-Learn (MLPClassifier DNN, Stack-DNN), XGBoost, LightGBM |
 | Explainable AI | SHAP, LIME |
 | Frontend | React.js (Vite) + Tailwind CSS + Recharts |
 | Database | SQL (PostgreSQL/MySQL) + SQLAlchemy ORM |

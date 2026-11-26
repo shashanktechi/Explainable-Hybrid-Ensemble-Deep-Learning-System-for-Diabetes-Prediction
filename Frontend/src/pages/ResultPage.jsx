@@ -15,7 +15,7 @@ import {
   FileWarning,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiGetPrediction } from '../services/api';
+import { apiGetPrediction, apiDownloadPredictionPdf } from '../services/api';
 import RiskScoreGauge from '../components/RiskScoreGauge';
 import ShapChart from '../components/ShapChart';
 import LimeChart from '../components/LimeChart';
@@ -120,8 +120,28 @@ export default function ResultPage() {
     };
   }, [predictionId, location.state]);
 
-  const handleDownloadPdf = () => {
-    toast.success('PDF report generation coming soon.');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!predictionId) return;
+    setDownloadingPdf(true);
+    try {
+      const response = await apiDownloadPredictionPdf(predictionId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `xai_hedl_report_${predictionId.slice(0, 8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF report downloaded.');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to download PDF report.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   if (loading) {
@@ -392,10 +412,11 @@ export default function ResultPage() {
         <button
           type="button"
           onClick={handleDownloadPdf}
-          className="btn-secondary inline-flex items-center justify-center gap-2 text-sm"
+          disabled={downloadingPdf}
+          className="btn-secondary inline-flex items-center justify-center gap-2 text-sm disabled:opacity-60"
         >
           <Download className="w-4 h-4" aria-hidden="true" />
-          Download Report as PDF
+          {downloadingPdf ? 'Generating PDF…' : 'Download Report as PDF'}
         </button>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

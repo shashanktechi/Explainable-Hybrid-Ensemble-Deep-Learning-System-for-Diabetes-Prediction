@@ -4,7 +4,10 @@ import { motion } from 'framer-motion';
 import { Stethoscope, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PatientForm from '../components/PatientForm';
-import { apiPredict } from '../services/api';
+import { apiPredict, apiGetPatients, apiCreatePatient } from '../services/api';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -22,17 +25,42 @@ export default function PredictPage() {
   const handlePredictSubmit = async (formData) => {
     setIsLoading(true);
     try {
-      const res = await apiPredict(formData);
+      let resolvedPatientId = formData.patient_id?.trim();
+
+      // In live API mode, /api/predict requires a valid patient UUID.
+      // If the user entered a patient name or code, look it up or create the patient first.
+      if (!USE_MOCK && resolvedPatientId && !UUID_REGEX.test(resolvedPatientId)) {
+        const searchRes = await apiGetPatients({ search: resolvedPatientId, size: 10 });
+        const existing = (searchRes.data?.items || []).find(
+          (p) =>
+            p.patient_code?.toLowerCase() === resolvedPatientId.toLowerCase() ||
+            p.full_name?.toLowerCase() === resolvedPatientId.toLowerCase()
+        );
+        if (existing) {
+          resolvedPatientId = existing.patient_id;
+        } else {
+          const created = await apiCreatePatient({
+            full_name: resolvedPatientId,
+            age: formData.age,
+            gender: formData.gender,
+          });
+          resolvedPatientId = created.data.patient_id;
+        }
+      }
+
+      const res = await apiPredict({ ...formData, patient_id: resolvedPatientId });
       const result = res.data;
       toast.success('Diabetes risk assessment completed!');
       navigate(`/result/${result.prediction_id}`, {
         state: { prediction: result },
       });
     } catch (err) {
-      const message =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        'Prediction failed. Please verify the clinical values and try again.';
+      const detail = err?.response?.data?.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
+        : detail ||
+          err?.response?.data?.message ||
+          'Prediction failed. Please verify the clinical values and try again.';
       toast.error(message);
     } finally {
       setIsLoading(false);

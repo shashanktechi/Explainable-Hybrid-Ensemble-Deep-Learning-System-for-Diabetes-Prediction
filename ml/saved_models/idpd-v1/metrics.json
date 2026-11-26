@@ -1,0 +1,19 @@
+{
+  "accuracy": 0.96875,
+  "balanced_accuracy": 0.8652557319223986,
+  "macro_f1": 0.9097680097680098,
+  "multiclass_brier_score": 0.052274999588187286,
+  "mcc": 0.8817005667234707,
+  "log_loss": 0.11774967605971746,
+  "roc_auc_ovr_macro": 0.9956418014258389,
+  "test_rows": 160,
+  "classes": [
+    "N",
+    "P",
+    "Y"
+  ],
+  "artifact": "xai_hedl.joblib",
+  "artifact_sha256": "20745cafa855c87516ce3007bb284e1dc7b49fa184bfc8883f6b8c8cb105903e",
+  "seed": 42,
+  "resampling": "none"
+}

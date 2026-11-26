@@ -278,14 +278,14 @@ export default function PatientForm({ onSubmit, isLoading = false, defaultPatien
 
         <div className={patients.length > 0 ? '' : 'md:col-span-2'}>
           <FormField
-            label="Patient ID / Code"
+            label="Patient Name or ID"
             name="patient_id"
             type="text"
             register={register}
             error={errors.patient_id}
             required
-            placeholder="Enter Patient ID (e.g. p1 or PAT-000001)"
-            helper="Unique patient identifier or medical record number"
+            placeholder="Enter Patient Name (e.g. John Doe) or existing Patient Code"
+            helper="Select an existing patient above or enter a name to register and predict"
           />
         </div>
       </SectionCard>

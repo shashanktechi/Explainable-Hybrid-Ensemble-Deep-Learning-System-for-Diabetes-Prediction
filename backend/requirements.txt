@@ -32,3 +32,6 @@ python-multipart==0.0.9
 
 # Email validation
 email-validator==2.2.0
+
+# PDF report generation
+reportlab>=4.0.0
