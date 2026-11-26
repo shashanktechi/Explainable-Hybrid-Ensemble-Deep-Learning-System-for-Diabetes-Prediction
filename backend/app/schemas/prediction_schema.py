@@ -21,11 +21,23 @@ class PredictRequest(BaseModel):
     diabetes_pedigree_fn: float | None = Field(None, ge=0, le=3)
 
 
+class FeatureNarrativeOut(BaseModel):
+    feature_key: str
+    feature: str
+    actual_value: float | str | None = None
+    reference_value: float | None = None
+    direction: str
+    narrative: str
+    shap_lime_agree: bool
+
+
 class ExplanationOut(BaseModel):
     shap_values: dict[str, float]
     lime_values: dict[str, float]
     top_features: list[str]
     method: str = "heuristic (stub predictor)"
+    feature_narratives: list[FeatureNarrativeOut] = Field(default_factory=list)
+    summary: str = ""
 
 
 class RecommendationOut(BaseModel):

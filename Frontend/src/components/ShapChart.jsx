@@ -67,7 +67,7 @@ function CustomTooltip({ active, payload }) {
   );
 }
 
-export default function ShapChart({ shapValues = {}, topFeatures = [] }) {
+export default function ShapChart({ shapValues = {}, topFeatures = [], featureNarratives = [] }) {
   const { isDark } = useTheme();
 
   const data = useMemo(() => {
@@ -214,6 +214,46 @@ export default function ShapChart({ shapValues = {}, topFeatures = [] }) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Per-feature Clinical Captions */}
+      {featureNarratives?.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Driver Breakdown
+          </p>
+          <ul className="space-y-1.5">
+            {featureNarratives.map((item) => {
+              const barData = data.find((d) => d.key === item.feature_key);
+              const val = barData?.value;
+              return (
+                <li
+                  key={item.feature_key}
+                  className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed flex items-start gap-2"
+                >
+                  <span
+                    className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                      item.shap_lime_agree ? 'bg-accent-500' : 'bg-amber-500'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>
+                    <strong className="text-slate-800 dark:text-slate-100 capitalize">
+                      {item.feature}
+                    </strong>
+                    {typeof val === 'number' && (
+                      <span className="ml-1 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
+                        ({val >= 0 ? `+${val.toFixed(3)}` : val.toFixed(3)})
+                      </span>
+                    )}
+                    {': '}
+                    {item.narrative}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

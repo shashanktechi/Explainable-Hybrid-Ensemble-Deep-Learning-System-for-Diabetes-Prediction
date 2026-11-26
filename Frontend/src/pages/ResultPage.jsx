@@ -13,9 +13,15 @@ import {
   AlertTriangle,
   BarChart3,
   FileWarning,
+  Mail,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { apiGetPrediction, apiDownloadPredictionPdf } from '../services/api';
+import {
+  apiGetPrediction,
+  apiGetPatient,
+  apiDownloadPredictionPdf,
+  apiSendPredictionReport,
+} from '../services/api';
 import RiskScoreGauge from '../components/RiskScoreGauge';
 import ShapChart from '../components/ShapChart';
 import LimeChart from '../components/LimeChart';
@@ -121,6 +127,25 @@ export default function ResultPage() {
   }, [predictionId, location.state]);
 
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
+  const [patientEmail, setPatientEmail] = useState(null);
+
+  useEffect(() => {
+    if (!prediction?.patient_id) return;
+    let cancelled = false;
+    apiGetPatient(prediction.patient_id)
+      .then((res) => {
+        if (!cancelled) {
+          setPatientEmail(res.data?.email || null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPatientEmail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [prediction?.patient_id]);
 
   const handleDownloadPdf = async () => {
     if (!predictionId) return;
@@ -141,6 +166,19 @@ export default function ResultPage() {
       toast.error(err?.response?.data?.detail || err?.message || 'Failed to download PDF report.');
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const handleSendToPatient = async () => {
+    if (!predictionId || !patientEmail) return;
+    setSendingReport(true);
+    try {
+      const res = await apiSendPredictionReport(predictionId);
+      toast.success(`Report sent to ${res.data?.recipient || patientEmail}`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to email report to patient.');
+    } finally {
+      setSendingReport(false);
     }
   };
 
@@ -373,6 +411,23 @@ export default function ResultPage() {
         </motion.div>
       </div>
 
+      {/* ── Clinical AI Explanation Summary ── */}
+      {prediction.explanation?.summary && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="elevated-card p-5 sm:p-6 border-l-4 border-l-accent-500"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400 mb-1.5">
+            Clinical Explanation Summary
+          </p>
+          <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed">
+            {prediction.explanation.summary}
+          </p>
+        </motion.div>
+      )}
+
       {/* ── Explainability Charts (SHAP + LIME) ── */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -383,6 +438,7 @@ export default function ResultPage() {
         <ShapChart
           shapValues={prediction.explanation?.shap_values}
           topFeatures={prediction.explanation?.top_features}
+          featureNarratives={prediction.explanation?.feature_narratives}
         />
         <LimeChart
           limeValues={prediction.explanation?.lime_values}
@@ -409,15 +465,31 @@ export default function ResultPage() {
         transition={{ delay: 0.5 }}
         className="elevated-card p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3"
       >
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          disabled={downloadingPdf}
-          className="btn-secondary inline-flex items-center justify-center gap-2 text-sm disabled:opacity-60"
-        >
-          <Download className="w-4 h-4" aria-hidden="true" />
-          {downloadingPdf ? 'Generating PDF…' : 'Download Report as PDF'}
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="btn-secondary inline-flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+          >
+            <Download className="w-4 h-4" aria-hidden="true" />
+            {downloadingPdf ? 'Generating PDF…' : 'Download Report as PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSendToPatient}
+            disabled={!patientEmail || sendingReport}
+            title={
+              patientEmail
+                ? `Email report PDF to ${patientEmail}`
+                : 'Add an email address to the patient profile first'
+            }
+            className="btn-accent inline-flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+          >
+            <Mail className="w-4 h-4" aria-hidden="true" />
+            {sendingReport ? 'Sending…' : 'Send to Patient'}
+          </button>
+        </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <Link

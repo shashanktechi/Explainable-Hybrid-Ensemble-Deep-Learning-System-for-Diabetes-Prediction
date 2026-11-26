@@ -26,6 +26,7 @@ export default function PredictPage() {
     setIsLoading(true);
     try {
       let resolvedPatientId = formData.patient_id?.trim();
+      const { patient_email: patientEmail, ...predictPayload } = formData;
 
       // In live API mode, /api/predict requires a valid patient UUID.
       // If the user entered a patient name or code, look it up or create the patient first.
@@ -43,12 +44,13 @@ export default function PredictPage() {
             full_name: resolvedPatientId,
             age: formData.age,
             gender: formData.gender,
+            email: patientEmail?.trim() || undefined,
           });
           resolvedPatientId = created.data.patient_id;
         }
       }
 
-      const res = await apiPredict({ ...formData, patient_id: resolvedPatientId });
+      const res = await apiPredict({ ...predictPayload, patient_id: resolvedPatientId });
       const result = res.data;
       toast.success('Diabetes risk assessment completed!');
       navigate(`/result/${result.prediction_id}`, {

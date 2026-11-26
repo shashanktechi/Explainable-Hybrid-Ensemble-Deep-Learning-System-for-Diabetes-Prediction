@@ -29,6 +29,7 @@ class Patient(Base):
         nullable=False,
     )
     contact_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(150), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid(native_uuid=False), ForeignKey("users.user_id"), nullable=False
     )

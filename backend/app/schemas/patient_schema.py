@@ -5,7 +5,7 @@ Pydantic schemas for patients and clinical records.
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ---------- Patient ----------
@@ -15,6 +15,7 @@ class PatientCreate(BaseModel):
     age: int = Field(..., ge=1, le=120)
     gender: str = Field(..., pattern=r"^(M|F|Other)$")
     contact_number: str | None = Field(None, max_length=20)
+    email: EmailStr | None = None
 
 
 class PatientUpdate(BaseModel):
@@ -22,6 +23,7 @@ class PatientUpdate(BaseModel):
     age: int | None = Field(None, ge=1, le=120)
     gender: str | None = Field(None, pattern=r"^(M|F|Other)$")
     contact_number: str | None = Field(None, max_length=20)
+    email: EmailStr | None = None
 
 
 class PatientOut(BaseModel):
@@ -31,6 +33,7 @@ class PatientOut(BaseModel):
     age: int
     gender: str
     contact_number: str | None = None
+    email: EmailStr | None = None
     created_by: uuid.UUID
     created_at: datetime
 

@@ -51,6 +51,34 @@ class TestPatientCRUD:
         assert response.json()["full_name"] == "Updated Name"
         assert response.json()["age"] == 50
 
+    def test_patient_email_round_trip(self, client, auth_headers_doctor, doctor_user):
+        create_resp = client.post(
+            "/api/patients",
+            headers=auth_headers_doctor,
+            json={
+                "full_name": "Email Patient",
+                "age": 42,
+                "gender": "F",
+                "email": "patient.one@example.com",
+            },
+        )
+        assert create_resp.status_code == 201
+        created = create_resp.json()
+        assert created["email"] == "patient.one@example.com"
+
+        pid = created["patient_id"]
+        get_resp = client.get(f"/api/patients/{pid}", headers=auth_headers_doctor)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["email"] == "patient.one@example.com"
+
+        upd_resp = client.put(
+            f"/api/patients/{pid}",
+            headers=auth_headers_doctor,
+            json={"email": "patient.updated@example.com"},
+        )
+        assert upd_resp.status_code == 200
+        assert upd_resp.json()["email"] == "patient.updated@example.com"
+
     def test_delete_patient_requires_admin(self, client, auth_headers_doctor, sample_patient):
         pid = str(sample_patient.patient_id)
         response = client.delete(f"/api/patients/{pid}", headers=auth_headers_doctor)

@@ -23,8 +23,12 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowRight,
+  Mail,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react';
-import { apiGetPatient, apiGetPatients } from '../services/api';
+import { apiGetPatient, apiGetPatients, apiUpdatePatient } from '../services/api';
 import toast from 'react-hot-toast';
 
 function RiskBandBadge({ band }) {
@@ -164,7 +168,30 @@ function EmptySection({ icon: Icon, title, description }) {
 }
 
 // ── Demographics Card ──
-function DemographicsCard({ patient }) {
+function DemographicsCard({ patient, onPatientUpdated }) {
+  const [editing, setEditing] = useState(false);
+  const [emailInput, setEmailInput] = useState(patient.email || '');
+  const [contactInput, setContactInput] = useState(patient.contact_number || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await apiUpdatePatient(patient.patient_id, {
+        email: emailInput.trim() || null,
+        contact_number: contactInput.trim() || null,
+      });
+      onPatientUpdated?.(res.data);
+      setEditing(false);
+      toast.success('Patient contact details updated.');
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Failed to update patient details.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const fields = [
     { label: 'Full Name', value: patient.full_name, icon: User },
     { label: 'Patient Code', value: patient.patient_code, icon: Hash },
@@ -175,6 +202,7 @@ function DemographicsCard({ patient }) {
       icon: Users,
     },
     { label: 'Contact', value: patient.contact_number || '—', icon: Phone },
+    { label: 'Email', value: patient.email || '—', icon: Mail },
     { label: 'Registered', value: patient.created_at ? formatDate(patient.created_at) : '—', icon: Clock },
   ];
 
@@ -185,30 +213,95 @@ function DemographicsCard({ patient }) {
       transition={{ delay: 0.1 }}
       className="elevated-card p-5 sm:p-6"
     >
-      <div className="flex items-center gap-2 mb-5">
-        <User className="w-4.5 h-4.5 text-accent-500" />
-        <h2 className="font-heading text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Patient Demographics
-        </h2>
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2">
+          <User className="w-4.5 h-4.5 text-accent-500" />
+          <h2 className="font-heading text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Patient Demographics
+          </h2>
+        </div>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setEmailInput(patient.email || '');
+              setContactInput(patient.contact_number || '');
+              setEditing(true);
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-600 dark:text-accent-400 hover:underline"
+          >
+            <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+            Edit Contact / Email
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {fields.map(({ label, value, icon: FieldIcon }) => (
-          <div key={label} className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-navy-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <FieldIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium mb-0.5">
-                {label}
-              </p>
-              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                {value}
-              </p>
-            </div>
+      {editing ? (
+        <form onSubmit={handleSave} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="edit-contact" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">
+              Contact Number
+            </label>
+            <input
+              id="edit-contact"
+              type="text"
+              value={contactInput}
+              onChange={(e) => setContactInput(e.target.value)}
+              placeholder="+1-555-0100"
+              className="form-input"
+            />
           </div>
-        ))}
-      </div>
+          <div>
+            <label htmlFor="edit-email" className="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">
+              Email Address
+            </label>
+            <input
+              id="edit-email"
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="patient@example.com"
+              className="form-input"
+            />
+          </div>
+          <div className="sm:col-span-2 flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-accent inline-flex items-center gap-1.5 text-xs py-2 px-4 disabled:opacity-60"
+            >
+              <Check className="w-3.5 h-3.5" aria-hidden="true" />
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="btn-secondary inline-flex items-center gap-1.5 text-xs py-2 px-4"
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {fields.map(({ label, value, icon: FieldIcon }) => (
+            <div key={label} className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-navy-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <FieldIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium mb-0.5">
+                  {label}
+                </p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                  {value}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -750,7 +843,10 @@ export default function PatientProfilePage() {
 
       {/* ── Content ── */}
       <div className="space-y-6">
-        <DemographicsCard patient={patient} />
+        <DemographicsCard
+          patient={patient}
+          onPatientUpdated={(updated) => setPatient((prev) => ({ ...prev, ...updated }))}
+        />
         <PredictionTimeline
           predictions={patient.predictions}
           onNavigate={handleNavigateToPrediction}

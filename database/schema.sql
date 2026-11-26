@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS patients (
     age          INT         NOT NULL,
     gender       ENUM('M','F','Other') NOT NULL,
     contact_number VARCHAR(20),
+    email        VARCHAR(150),
     created_by   CHAR(32)    NOT NULL,
     created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY  (patient_id),

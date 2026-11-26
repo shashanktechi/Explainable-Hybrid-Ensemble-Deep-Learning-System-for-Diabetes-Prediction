@@ -78,6 +78,7 @@ def create_patient(
         age=body.age,
         gender=body.gender,
         contact_number=body.contact_number,
+        email=body.email,
         created_by=current_user.user_id,
     )
     db.add(patient)

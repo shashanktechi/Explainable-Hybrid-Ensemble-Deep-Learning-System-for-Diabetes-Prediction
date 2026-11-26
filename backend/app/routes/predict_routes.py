@@ -16,6 +16,7 @@ from backend.app.schemas.prediction_schema import (
     PredictRequest,
     PredictResponse,
     ExplanationOut,
+    FeatureNarrativeOut,
     RecommendationOut,
     ModelRegistryOut,
     AuditLogOut,
@@ -32,6 +33,8 @@ from backend.app.services.explanation_service import (
     compute_shap_values,
     compute_lime_values,
     compute_top_features,
+    build_feature_narratives,
+    build_overall_narrative,
     generate_recommendations,
 )
 from backend.app.utils.logger import get_logger
@@ -90,8 +93,22 @@ def _build_response(
     top_features: list[str],
     recommendations_data: list[dict[str, str]],
     explanation_method: str = "heuristic (stub predictor)",
+    features: dict | None = None,
 ) -> PredictResponse:
-    """Build the exact JSON response shape from spec §5."""
+    """Build the exact JSON response shape from spec §5, enriched with narratives."""
+    narratives_raw = build_feature_narratives(
+        shap_values,
+        lime_values,
+        features or {},
+        predicted_class=prediction.predicted_class,
+        top_features=top_features,
+    )
+    summary = build_overall_narrative(
+        prediction.predicted_class,
+        prediction.probability_score,
+        prediction.risk_band,
+        narratives_raw,
+    )
     return PredictResponse(
         prediction_id=str(prediction.prediction_id),
         record_id=str(prediction.record_id),
@@ -107,6 +124,8 @@ def _build_response(
             lime_values=lime_values,
             top_features=top_features,
             method=explanation_method,
+            feature_narratives=[FeatureNarrativeOut(**n) for n in narratives_raw],
+            summary=summary,
         ),
         recommendations=[
             RecommendationOut(category=r["category"], text=r["text"])
@@ -266,6 +285,7 @@ def run_prediction(
     return _build_response(
         prediction_row, class_probabilities,
         shap_values, lime_values, top_features, recommendations_data, explanation_method,
+        features=features,
     )
 
 
@@ -314,6 +334,20 @@ def get_prediction(
     # without a stored vector are explicitly reported as non-reproducible.
     class_probabilities = _reconstruct_class_probabilities(prediction)
 
+    record = db.query(ClinicalRecord).filter(ClinicalRecord.record_id == prediction.record_id).first()
+    features = {
+        "age": record.age,
+        "gender": record.gender,
+        "pregnancies": record.pregnancies,
+        "glucose": record.glucose,
+        "blood_pressure": record.blood_pressure,
+        "skin_thickness": record.skin_thickness,
+        "insulin": record.insulin,
+        "bmi": record.bmi,
+        "hba1c": record.hba1c,
+        "diabetes_pedigree_fn": record.diabetes_pedigree_fn,
+    } if record else {}
+
     # Audit
     log_audit(db, current_user.user_id, "viewed_prediction", "predictions", prediction.prediction_id)
     db.commit()
@@ -322,6 +356,7 @@ def get_prediction(
         prediction, class_probabilities,
         shap_values, lime_values, top_features, recommendations_data,
         explanation.method if explanation and explanation.method else "legacy explanation (method unknown)",
+        features=features,
     )
 
 

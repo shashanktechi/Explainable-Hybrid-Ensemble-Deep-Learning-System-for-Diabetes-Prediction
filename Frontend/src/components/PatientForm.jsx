@@ -17,6 +17,12 @@ import { apiGetPatients } from '../services/api';
 
 const patientSchema = z.object({
   patient_id: z.string().trim().min(1, 'Patient ID is required'),
+  patient_email: z
+    .string()
+    .trim()
+    .email('Enter a valid email address')
+    .optional()
+    .or(z.literal('')),
   glucose: z
     .number({ error: 'Glucose is required' })
     .min(30, 'Minimum value is 30 mg/dL')
@@ -192,6 +198,7 @@ export default function PatientForm({ onSubmit, isLoading = false, defaultPatien
     resolver: zodResolver(patientSchema),
     defaultValues: {
       patient_id: defaultPatientId,
+      patient_email: '',
       glucose: undefined,
       hba1c: undefined,
       insulin: undefined,
@@ -238,11 +245,13 @@ export default function PatientForm({ onSubmit, isLoading = false, defaultPatien
     if (match) {
       if (match.age) setValue('age', match.age, { shouldValidate: true });
       if (match.gender) setValue('gender', match.gender, { shouldValidate: true });
+      setValue('patient_email', match.email || '', { shouldValidate: true });
     }
   };
 
   const submitHandler = (data) => {
     const cleaned = { ...data };
+    if (!cleaned.patient_email) delete cleaned.patient_email;
     if (cleaned.hba1c === undefined || cleaned.hba1c === null) delete cleaned.hba1c;
     if (cleaned.skin_thickness === undefined || cleaned.skin_thickness === null) delete cleaned.skin_thickness;
     if (cleaned.pregnancies === undefined || cleaned.pregnancies === null) delete cleaned.pregnancies;
@@ -286,6 +295,18 @@ export default function PatientForm({ onSubmit, isLoading = false, defaultPatien
             required
             placeholder="Enter Patient Name (e.g. John Doe) or existing Patient Code"
             helper="Select an existing patient above or enter a name to register and predict"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <FormField
+            label="Patient Email"
+            name="patient_email"
+            type="email"
+            register={register}
+            error={errors.patient_email}
+            placeholder="patient@example.com"
+            helper="Optional — used to email clinical risk reports directly to the patient"
           />
         </div>
       </SectionCard>

@@ -482,6 +482,31 @@ const mockApi = {
   downloadPredictionPdf: async () => {
     throw new Error('PDF export requires the live FastAPI backend (set VITE_USE_MOCK=false).');
   },
+
+  sendPredictionReport: async () => {
+    throw new Error('Emailing patient reports requires the live FastAPI backend (set VITE_USE_MOCK=false).');
+  },
+
+  createPatient: async ({ full_name, age, gender, contact_number, email }) => {
+    await mockDelay();
+    return {
+      data: {
+        patient_id: `p-${Date.now()}`,
+        patient_code: 'PAT-MOCK',
+        full_name,
+        age,
+        gender,
+        contact_number: contact_number || null,
+        email: email || null,
+        created_at: new Date().toISOString(),
+      },
+    };
+  },
+
+  updatePatient: async (id, data) => {
+    await mockDelay();
+    return { data: { patient_id: id, ...data } };
+  },
 };
 
 // ── Real API Functions ──
@@ -526,6 +551,8 @@ const realApi = {
 
   createPatient: (data) => http.post('/api/patients', data),
 
+  updatePatient: (id, data) => http.put(`/api/patients/${id}`, data),
+
   getPatients: ({ page = 1, size = 20, search } = {}) => {
     const params = new URLSearchParams({ page, size });
     if (search) params.append('search', search);
@@ -558,6 +585,9 @@ const realApi = {
 
   downloadPredictionPdf: (id) =>
     http.get(`/api/predictions/${id}/pdf`, { responseType: 'blob' }),
+
+  sendPredictionReport: (id) =>
+    http.post(`/api/predictions/${id}/send-report`),
 };
 
 // ── Export the active API based on VITE_USE_MOCK ──
@@ -573,6 +603,7 @@ export const apiGetPrediction = api.getPrediction;
 export const apiGetPredictions = api.getPredictions;
 export const apiGetPatient = api.getPatient;
 export const apiCreatePatient = api.createPatient;
+export const apiUpdatePatient = api.updatePatient;
 export const apiGetPatients = api.getPatients;
 export const apiGetDashboardStats = api.getDashboardStats;
 export const apiChangePassword = api.changePassword;
@@ -580,6 +611,7 @@ export const apiRequestPasswordChangeOtp = api.requestPasswordChangeOtp;
 export const apiForgotPassword = api.forgotPassword;
 export const apiResetPassword = api.resetPassword;
 export const apiDownloadPredictionPdf = api.downloadPredictionPdf;
+export const apiSendPredictionReport = api.sendPredictionReport;
 
 export default http;
 

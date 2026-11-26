@@ -42,6 +42,10 @@ class TestPrediction:
         exp = data["explanation"]
         assert "shap_values" in exp and "lime_values" in exp and "top_features" in exp
         assert isinstance(exp["top_features"], list) and len(exp["top_features"]) >= 1
+        assert "feature_narratives" in exp and "summary" in exp
+        assert len(exp["feature_narratives"]) == len(exp["top_features"])
+        assert data["predicted_class"] in exp["summary"]
+        assert data["risk_band"] in exp["summary"]
 
         recs = data["recommendations"]
         assert len(recs) == 3
@@ -132,3 +136,29 @@ class TestPrediction:
             },
         )
         assert response.status_code == 422
+
+    def test_explanation_narratives_and_disagreement_caveat(self):
+        from backend.app.services.explanation_service import (
+            build_feature_narratives,
+            build_overall_narrative,
+        )
+
+        shap_vals = {"glucose": 0.45, "bmi": 0.20, "hba1c": 0.15}
+        lime_vals = {"glucose": -0.30, "bmi": 0.18, "hba1c": 0.12}
+        features = {"glucose": 182.0, "bmi": 32.0, "hba1c": 7.2}
+
+        narratives = build_feature_narratives(
+            shap_vals, lime_vals, features, predicted_class="Diabetic"
+        )
+        assert len(narratives) == 3
+        glucose_item = narratives[0]
+        assert glucose_item["feature_key"] == "glucose"
+        assert glucose_item["direction"] == "above normal"
+        assert glucose_item["shap_lime_agree"] is False
+        assert "disagree" in glucose_item["narrative"].lower() or "cautiously" in glucose_item["narrative"].lower()
+        assert narratives[1]["shap_lime_agree"] is True
+
+        summary = build_overall_narrative("Diabetic", 0.78, "High", narratives)
+        assert "Diabetic" in summary
+        assert "78%" in summary
+        assert "High risk band" in summary
